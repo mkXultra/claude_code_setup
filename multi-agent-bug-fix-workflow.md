@@ -1,353 +1,352 @@
-# 複数エージェントによるバグ修正ワークフロー
+# Multi-Agent Bug Fix Workflow
 
-## 概要
+## Overview
 
-このドキュメントは、Claude Code MCP（`mcp__ccm__claude_code`）を使用して複数の専門エージェントを協調させ、効率的にバグを修正するワークフローを記述します。
+This document describes a workflow for efficiently fixing bugs by coordinating multiple specialized agents using Claude Code MCP (`mcp__ccm__claude_code`).
 
-**対象読者**: このドキュメントはClaude Codeが参照して、複数エージェントによるバグ修正を実行するためのガイドです。
+**Target Audience**: This document serves as a guide for Claude Code to execute multi-agent bug fixes.
 
-## ワークフローの構成要素
+## Workflow Components
 
-### 1. 調査エージェント（Investigation Agent）
-- **役割**: バグの原因調査と修正方法の提案
-- **モデル**: Ops
-- **成果物**: `bug-investigation-report.md`
+### 1. Investigation Agent
+- **Role**: Investigate bug causes and propose solutions
+- **Model**: Opus
+- **Deliverable**: `bug-investigation-report.md`
 
-### 2. 実装エージェント（Implementation Agent）
-- **役割**: 調査結果に基づいた修正の実装
-- **モデル**: sonnet
-- **成果物**: 実際のコード修正
+### 2. Implementation Agent
+- **Role**: Implement fixes based on investigation results
+- **Model**: sonnet
+- **Deliverable**: Actual code fixes
 
-### 3. レビューエージェント（Review Agent）
-- **役割**: 実装された修正のコードレビュー
-- **モデル**: Opus
-- **成果物**: `code-review-report.md`
+### 3. Review Agent
+- **Role**: Code review of implemented fixes
+- **Model**: Opus
+- **Deliverable**: `code-review-report.md`
 
-### 4. デバッグエージェント（Debug Agent）
-- **役割**: 問題発生時のトラブルシューティング
-- **モデル**: sonnet（コスト効率を重視）
-- **起動条件**: エラー発生時や動作確認失敗時のみ起動
-- **タスク例**:
-  - 環境状態の確認（プロセス状態、ファイルシステム）
-  - エラーログの詳細調査
-  - 実行環境の問題特定
-  - 簡易的な修正提案
+### 4. Debug Agent
+- **Role**: Troubleshooting when issues occur
+- **Model**: sonnet (prioritizing cost efficiency)
+- **Launch Condition**: Only launched when errors occur or verification fails
+- **Task Examples**:
+  - Check environment state (process status, file system)
+  - Detailed investigation of error logs
+  - Identify execution environment issues
+  - Propose simple solutions
 
-## 詳細なワークフロー
+## Detailed Workflow
 
-### Phase 0: クリーンアップ
+### Phase 0: Cleanup
 
-ワークフロー開始前に、前回の実行で生成された成果物ファイルをクリーンアップします。
+Clean up deliverable files generated from previous executions before starting the workflow.
 
 ```bash
-# バックアップディレクトリの作成（存在しない場合）
+# Create backup directory (if it doesn't exist)
 mkdir -p ./backup
 
-# 既存の成果物ファイルを確認
+# Check existing deliverable files
 ls -la | grep -E "(bug-investigation-report|code-review-report)\.md"
 
-# 既存ファイルがある場合はバックアップ
+# Backup existing files if present
 if [ -f "bug-investigation-report.md" ]; then
-  # ./backupディレクトリにタイムスタンプ付きでバックアップ
+  # Backup to ./backup directory with timestamp
   mv bug-investigation-report.md "./backup/bug-investigation-report_$(date +%Y%m%d_%H%M%S).md"
   echo "Backed up bug-investigation-report.md"
 fi
 
 if [ -f "code-review-report.md" ]; then
-  # ./backupディレクトリにタイムスタンプ付きでバックアップ
+  # Backup to ./backup directory with timestamp
   mv code-review-report.md "./backup/code-review-report_$(date +%Y%m%d_%H%M%S).md"
   echo "Backed up code-review-report.md"
 fi
 
-
-# 古いバックアップの自動削除（30日以上前のファイル）
+# Automatic deletion of old backups (files older than 30 days)
 # find ./backup -name "*_report_*.md" -mtime +30 -delete
 ```
 
-### Phase 0.5: 基盤セッション構築
+### Phase 0.5: Foundation Session Setup
 
-効率的なマルチエージェント実行のため、最初に基盤セッションを構築します：
+Build a foundation session for efficient multi-agent execution:
 
-**基盤セッションの作成**:
+**Creating Foundation Session**:
 ```bash
-# 1. プロジェクト理解用の基盤セッション作成
+# 1. Create foundation session for project understanding
 mcp__ccm__claude_code [
   model: "sonnet",
-  prompt: "プロジェクト構造分析：
-  1. CLAUDE.mdを読み込んでプロジェクト概要を理解
-  2. package.jsonで技術スタックを確認
-  3. 主要ディレクトリ構造を調査
-  4. バグ修正に必要な基盤知識を整理
-  完了後'BASE_CONTEXT_READY'と報告してセッションIDを提供"
+  prompt: "Project structure analysis:
+  1. Read CLAUDE.md to understand project overview
+  2. Check technology stack with package.json
+  3. Investigate main directory structure
+  4. Organize foundational knowledge needed for bug fixes
+  Report 'BASE_CONTEXT_READY' upon completion and provide session ID"
 ]
 ```
 
-**基盤セッションの効果**:
-- **プロンプトキャッシュ**: CLAUDE.md等の大容量コンテンツが自動キャッシュ
-- **コンテキスト共有**: 全エージェントが共通の理解基盤を取得
-- **コスト削減**: 後続エージェントで60-90%のトークンコスト削減
-- **実行時間短縮**: キャッシュ活用により高速起動
+**Foundation Session Benefits**:
+- **Prompt Cache**: Large content like CLAUDE.md automatically cached
+- **Context Sharing**: All agents get common understanding foundation
+- **Cost Reduction**: 60-90% token cost reduction for subsequent agents
+- **Execution Time Reduction**: Fast startup through cache utilization
 
-**重要**: 基盤セッションIDを保存（全エージェントで活用）
+**Important**: Save foundation session ID (utilized by all agents)
 
-### Phase 1: バグ調査
+### Phase 1: Bug Investigation
 
-調査エージェント（Opus）を**基盤セッションから**起動して、バグの原因を分析します：
+Launch Investigation Agent (Opus) **from foundation session** to analyze bug causes:
 
-1. **mcp__ccm__claude_code**ツールを使用
-2. **session_id**: 基盤セッションIDを指定（コンテキスト継承）
-3. **model**: "opus"を指定
-4. **プロンプトに含める内容**:
-   - ユーザーから提供されたバグの詳細
-   - 調査手順（コード読み込み、原因特定、影響分析、修正提案）
-   - bug-investigation-report.mdへの出力指示
+1. **Use mcp__ccm__claude_code** tool
+2. **session_id**: Specify foundation session ID (context inheritance)
+3. **model**: Specify "opus"
+4. **Include in prompt**:
+   - Bug details provided by user
+   - Investigation procedure (code reading, cause identification, impact analysis, fix proposal)
+   - Output instruction to bug-investigation-report.md
 
-**出力形式の指定**:
+**Specify output format**:
 ```
-# バグ調査レポート
-## 問題の概要
-## 原因の詳細  
-## 影響を受けるファイルと関数
-## 推奨される修正方法
-## 具体的な修正箇所とコード例
+# Bug Investigation Report
+## Problem Overview
+## Detailed Cause  
+## Affected Files and Functions
+## Recommended Fix Approach
+## Specific Fix Locations and Code Examples
 ```
 
-返されたプロセスIDを保存します（進捗監視用）。
+Save the returned process ID (for progress monitoring).
 
-### Phase 2: 進捗監視
+### Phase 2: Progress Monitoring
 
-1. **5分間待機**（Bashツールで`sleep 300`を実行）
-2. **mcp__ccm__get_claude_result**でプロセスの状態を確認
-3. 完了していない場合は、さらに**2分待機**して再確認
-4. **bug-investigation-report.md**が作成されているか確認（Readツールで確認）
+1. **Wait 5 minutes** (execute `sleep 300` with Bash tool)
+2. **Check process status** with mcp__ccm__get_claude_result
+3. If not complete, **wait another 2 minutes** and check again
+4. **Verify bug-investigation-report.md** creation (check with Read tool)
 
-### Phase 3: 修正実装
+### Phase 3: Fix Implementation
 
-実装エージェント（Sonnet）を**基盤セッションから**起動して修正を実装します：
+Launch Implementation Agent (Sonnet) **from foundation session** to implement fixes:
 
-1. **mcp__ccm__claude_code**ツールを使用
-2. **session_id**: 基盤セッションIDを指定（プロジェクト理解継承）
-3. **model**: "sonnet"を指定
-4. **プロンプトに含める内容**:
-   - bug-investigation-report.mdを読む指示
-   - 具体的な修正の実装指示
-   - ビルドコマンドの実行指示
-   - 実装完了の報告形式
+1. **Use mcp__ccm__claude_code** tool
+2. **session_id**: Specify foundation session ID (inherit project understanding)
+3. **model**: Specify "sonnet"
+4. **Include in prompt**:
+   - Instruction to read bug-investigation-report.md
+   - Specific implementation instructions
+   - Build command execution instruction
+   - Implementation completion report format
 
-**重要**: 返された**新しいセッションID**を保存します（Claude Codeは自動的に新セッションを生成し、基盤コンテキストを継承）。
+**Important**: Save the returned **new session ID** (Claude Code automatically generates new session and inherits foundation context).
 
-### Phase 3.5: 動作確認とデバッグ（オプション）
+### Phase 3.5: Verification and Debugging (Optional)
 
-修正実装後、必要に応じて動作確認を実施します。エラーが発生した場合は、デバッグエージェントを起動：
+After implementing fixes, conduct verification as needed. If errors occur, launch Debug Agent:
 
-1. **動作確認の実施**（メインエージェントが実行）
-   - 修正された機能の基本的な動作テスト
-   - エラーが発生した場合、詳細を記録
+1. **Conduct Verification** (executed by main agent)
+   - Basic functional test of fixed features
+   - Record details if errors occur
 
-2. **デバッグエージェントの起動条件**:
-   - 動作確認でエラーが発生
-   - ビルドは成功したが実行時エラーが発生
-   - 環境に起因する問題が疑われる
+2. **Debug Agent Launch Conditions**:
+   - Error occurs during verification
+   - Build succeeds but runtime error occurs
+   - Environment-related issues suspected
 
-3. **デバッグエージェントの起動**（条件に該当する場合のみ）:
+3. **Launch Debug Agent** (only when conditions are met):
    ```
-   - model: "sonnet"を指定（コスト効率重視）
-   - プロンプト例:
-     「以下のエラーが発生しました。環境状態を確認し、原因を特定してください：
-     [エラー詳細]
-     確認項目：
-     - 実行中のプロセス状態
-     - 関連ファイルの存在確認
-     - ログファイルの内容
-     - 簡易的な解決策の提案」
+   - model: Specify "sonnet" (prioritize cost efficiency)
+   - Example prompt:
+     "The following error occurred. Check environment state and identify the cause:
+     [Error details]
+     Check items:
+     - Running process state
+     - Verify existence of related files
+     - Log file contents
+     - Propose simple solutions"
    ```
 
-4. **デバッグ結果の活用**:
-   - 環境問題の場合：メインエージェントが対処
-   - コード問題の場合：実装エージェントに修正を依頼
+4. **Utilize Debug Results**:
+   - Environment issues: Main agent handles
+   - Code issues: Request Implementation Agent for fixes
 
-### Phase 4: コードレビュー
+### Phase 4: Code Review
 
-1. **3分待機**（実装完了を待つ）
-2. レビューエージェント（Opus）を**基盤セッションから**起動：
-   - **mcp__ccm__claude_code**ツールを使用
-   - **session_id**: 基盤セッションIDを指定（プロジェクト理解継承）
-   - **model**: "opus"を指定
-   - **出力形式を明確に指定**:
-     - 1行目: COMPLETED または INCOMPLETE
-     - 2行目以降: INCOMPLETEの場合のみ、具体的な指摘事項
+1. **Wait 3 minutes** (wait for implementation completion)
+2. Launch Review Agent (Opus) **from foundation session**:
+   - **Use mcp__ccm__claude_code** tool
+   - **session_id**: Specify foundation session ID (inherit project understanding)
+   - **model**: Specify "opus"
+   - **Clearly specify output format**:
+     - Line 1: COMPLETED or INCOMPLETE
+     - Line 2 onwards: Specific issues only if INCOMPLETE
 
-**重要**: 返された**新しいセッションID**を保存します（レビューコンテキスト継続用）。
+**Important**: Save the returned **new session ID** (for continuing review context).
 
-### Phase 5: レビュー指摘修正と再レビューサイクル
+### Phase 5: Review Fix and Re-review Cycle
 
-1. **2分待機**（レビュー完了を待つ）
-2. **code-review-report.md**の1行目を確認
-3. **INCOMPLETE**の場合（最大5回まで繰り返し）:
-   - 実装エージェントのセッションを**再開**（Phase 3で生成されたセッションIDを使用）
-   - 指摘事項の修正を指示
-   - 2分待機
-   - レビューエージェントのセッションを**再開**（Phase 4で生成されたセッションIDを使用）
-   - 再レビューを指示
-   - 2分待機
-   - レビュー結果を再確認
+1. **Wait 2 minutes** (wait for review completion)
+2. **Check first line of code-review-report.md**
+3. **If INCOMPLETE** (repeat up to 5 times):
+   - **Resume** Implementation Agent session (use session ID generated in Phase 3)
+   - Instruct to fix issues
+   - Wait 2 minutes
+   - **Resume** Review Agent session (use session ID generated in Phase 4)
+   - Instruct re-review
+   - Wait 2 minutes
+   - Check review result again
 
-**重要**: 
-- 各エージェントは基盤セッションからコンテキストを継承後、独立セッションで作業継続
-- セッション再開時もプロンプトキャッシュ効果が維持され、高速実行が可能
-- ファイル競合は自動回避（各エージェントが独立ファイルに書き込み）
+**Important**: 
+- Each agent continues work in independent session after inheriting context from foundation session
+- Prompt cache effect maintained during session resumption, enabling fast execution
+- File conflicts automatically avoided (each agent writes to independent files)
 
-### 完了確認
+### Completion Confirmation
 
-**COMPLETED**の場合:
-- バグ修正が完了
-- 成果物を確認：
-  - bug-investigation-report.md（調査レポート）
-  - code-review-report.md（レビュー結果）
-  - 修正されたソースコード
+**If COMPLETED**:
+- Bug fix is complete
+- Confirm deliverables:
+  - bug-investigation-report.md (investigation report)
+  - code-review-report.md (review results)
+  - Fixed source code
 
-**INCOMPLETE**のまま5回を超えた場合:
-- 手動介入が必要であることを報告
+**If still INCOMPLETE after 5 iterations**:
+- Report that manual intervention is needed
 
-## タスク管理のベストプラクティス
+## Best Practices for Task Management
 
-TodoWriteツールを使用して進捗を管理することを推奨：
+Recommend using TodoWrite tool to manage progress:
 
-1. **バグ調査エージェントの完了確認と調査レポート取得**
-2. **実装エージェントによる修正**
-3. **修正後の動作確認とテスト**
-4. **レビューエージェントによるコードレビュー**
-5. **レビュー指摘事項の修正**（必要に応じて）
-6. **修正後の再レビュー**（必要に応じて）
+1. **Confirm bug investigation agent completion and obtain investigation report**
+2. **Fix by implementation agent**
+3. **Post-fix verification and testing**
+4. **Code review by review agent**
+5. **Fix review issues** (as needed)
+6. **Re-review after fixes** (as needed)
 
-各タスクの完了時に状態を更新し、全体の進捗を可視化します。
+Update status upon completion of each task to visualize overall progress.
 
-## エージェント間の連携
+## Inter-Agent Coordination
 
-### 最適化されたセッション管理戦略
+### Optimized Session Management Strategy
 
-**基盤セッション活用による効率化**:
+**Efficiency through Foundation Session Utilization**:
 
-1. **基盤セッション**: プロジェクト全体の理解を構築（Phase 0.5）
-2. **調査エージェント**: 基盤セッションから起動→自動的に新セッション生成
-3. **実装エージェント**: 基盤セッションから起動→新セッション生成（修正サイクルで再利用）
-4. **レビューエージェント**: 基盤セッションから起動→新セッション生成（再レビューで再利用）
+1. **Foundation Session**: Build project-wide understanding (Phase 0.5)
+2. **Investigation Agent**: Launch from foundation session → Automatically generate new session
+3. **Implementation Agent**: Launch from foundation session → Generate new session (reuse in fix cycle)
+4. **Review Agent**: Launch from foundation session → Generate new session (reuse for re-review)
 
-**Claude Codeの実際の動作**:
-- `-r <session_id>`で起動時：指定セッションのコンテキストを読み込み
-- **自動的に新セッションID生成**：書き込みは新ファイルで競合回避
-- **プロンプトキャッシュ継承**：基盤セッションのキャッシュを活用
-- **モデル間共有**：Sonnet→Opusでもキャッシュ効果維持
+**Claude Code's Actual Behavior**:
+- When launched with `-r <session_id>`: Load specified session context
+- **Automatically generate new session ID**: Avoid conflicts by writing to new files
+- **Inherit prompt cache**: Utilize foundation session cache
+- **Cross-model sharing**: Cache effect maintained even from Sonnet→Opus
 
-**実証されたコスト削減効果**:
+**Demonstrated Cost Reduction Effect**:
 ```json
-// 基盤セッションからのエージェント起動例
+// Example of agent launch from foundation session
 "usage": {
-  "input_tokens": 56,                    // 新規入力（微量）
-  "cache_creation_input_tokens": 43370,  // キャッシュ作成
-  "cache_read_input_tokens": 390302,     // 大量キャッシュ活用
+  "input_tokens": 56,                    // New input (minimal)
+  "cache_creation_input_tokens": 43370,  // Cache creation
+  "cache_read_input_tokens": 390302,     // Massive cache utilization
   "output_tokens": 6111
 }
-// 結果：90%以上のトークンコスト削減
+// Result: Over 90% token cost reduction
 ```
 
-**セッション管理のベストプラクティス**:
-- 基盤セッションIDの確実な保存と全エージェントでの活用
-- 各エージェントの新セッションIDを継続作業用に保存
-- セッション複製による安全な並行実行
-- プロンプトキャッシュ効果の最大化
+**Session Management Best Practices**:
+- Reliably save foundation session ID and utilize across all agents
+- Save each agent's new session ID for continued work
+- Safe parallel execution through session duplication
+- Maximize prompt cache effect
 
-## 待機時間の目安
+## Estimated Wait Times
 
-- **調査エージェント**: 5分（初回）、2分（再確認）
-- **実装エージェント**: 3分
-- **レビューエージェント**: 2分
-- **修正サイクル**: 各2分
+- **Investigation Agent**: 5 minutes (initial), 2 minutes (recheck)
+- **Implementation Agent**: 3 minutes
+- **Review Agent**: 2 minutes
+- **Fix Cycle**: 2 minutes each
 
-Bashツールの`sleep`コマンドを使用して待機します（例: `sleep 300`は5分待機）。
+Use Bash tool's `sleep` command to wait (e.g., `sleep 300` waits 5 minutes).
 
-## 成功事例
+## Success Case Study
 
-### LockServiceバグ修正の例（最適化版）
+### LockService Bug Fix Example (Optimized Version)
 
-**基盤セッション構築**:
-- **基盤セッション**: プロジェクト構造とCLAUDE.md読み込み（セッションID: base-001）
-- **キャッシュ作成**: 18,621トークンのプロジェクトコンテキスト
+**Foundation Session Setup**:
+- **Foundation Session**: Load project structure and CLAUDE.md (Session ID: base-001)
+- **Cache Creation**: 18,621 tokens of project context
 
-**エージェント実行**:
-1. **問題**: ロックファイル作成時のディレクトリ不在エラー
-2. **調査エージェント**: 基盤セッションから起動→新セッション生成（ID: inv-924fab52）
-   - キャッシュ活用: 99,870トークン読み込み、新規入力: 245トークン
-   - **調査結果**: `acquireFileLock`メソッドでディレクトリ作成処理が不足
-3. **実装エージェント**: 基盤セッションから起動→新セッション生成（ID: impl-e8387697）
-   - キャッシュ活用: 324,529トークン読み込み、新規入力: 186トークン
-   - **実装**: `fs.mkdir({ recursive: true })`による親ディレクトリ作成
-4. **レビューエージェント**: 基盤セッションから起動（Opusモデル）→新セッション生成（ID: rev-a1b2c3d4）
-   - **モデル間キャッシュ共有**: 390,302トークン読み込み、新規入力: 56トークン
-   - **初回レビュー**: INCOMPLETE（改善提案あり）
-5. **修正サイクル**: 各エージェントのセッション再開でコンテキスト継続
-6. **再レビュー**: COMPLETED
+**Agent Execution**:
+1. **Issue**: Directory not found error when creating lock file
+2. **Investigation Agent**: Launch from foundation session → Generate new session (ID: inv-924fab52)
+   - Cache utilization: 99,870 tokens read, new input: 245 tokens
+   - **Investigation Result**: Missing directory creation in `acquireFileLock` method
+3. **Implementation Agent**: Launch from foundation session → Generate new session (ID: impl-e8387697)
+   - Cache utilization: 324,529 tokens read, new input: 186 tokens
+   - **Implementation**: Parent directory creation with `fs.mkdir({ recursive: true })`
+4. **Review Agent**: Launch from foundation session (Opus model) → Generate new session (ID: rev-a1b2c3d4)
+   - **Cross-model cache sharing**: 390,302 tokens read, new input: 56 tokens
+   - **Initial Review**: INCOMPLETE (with improvement suggestions)
+5. **Fix Cycle**: Context continuation through session resumption for each agent
+6. **Re-review**: COMPLETED
 
-**効果測定**:
-- **総コスト削減**: 約85%（キャッシュ活用による）
-- **実行時間短縮**: 約60%（キャッシュによる高速化）
-- **品質向上**: モデル間連携による多角的検証
+**Effect Measurement**:
+- **Total Cost Reduction**: ~85% (through cache utilization)
+- **Execution Time Reduction**: ~60% (acceleration through cache)
+- **Quality Improvement**: Multi-perspective verification through model coordination
 
-## メリット
+## Benefits
 
-1. **専門性の活用**: 各エージェントが特定の役割に集中
-2. **品質保証**: 複数の視点からの検証
-3. **文書化**: 各フェーズの成果物が自動的に文書化
-4. **再現性**: ワークフローが形式化され、再利用可能
-5. **並列処理**: 独立したタスクは並行実行可能
+1. **Leveraging Specialization**: Each agent focuses on specific role
+2. **Quality Assurance**: Verification from multiple perspectives
+3. **Documentation**: Deliverables from each phase automatically documented
+4. **Reproducibility**: Formalized workflow, reusable
+5. **Parallel Processing**: Independent tasks can be executed concurrently
 
-## 注意事項
+## Precautions
 
-1. **最適化されたコスト管理**: 
-   - **基盤セッション活用**: 60-90%のコスト削減効果
-   - **プロンプトキャッシュ**: 自動有効化によるトークン削減
-   - **モデル選択**: Sonnet（効率）→Opus（品質）の戦略的使い分け
-   - **デバッグエージェント**: Sonnetでコスト抑制
-2. **セッション管理の実態**:
-   - **基盤セッションID**: 全エージェントの起点として確実に保存
-   - **自動新セッション生成**: Claude Codeの安全な設計を活用
-   - **ファイル競合回避**: 自動的に独立ファイルで書き込み
-   - **キャッシュ効果維持**: セッション継承でコスト削減継続
-3. **待機時間**: キャッシュ効果による高速化を考慮した時間設定
-4. **エラーハンドリング**: 
-   - セッション複製失敗時の代替手段
-   - キャッシュ効果が得られない場合の対処
-   - プロセス管理の改善
-5. **クリーンアップ**: 前回の成果物を適切に処理（バックアップまたは削除）
-6. **並行実行の活用**:
-   - 基盤セッションから複数エージェント同時起動可能
-   - 独立性保証によるリスク回避
-   - スループット向上効果
+1. **Optimized Cost Management**: 
+   - **Foundation Session Utilization**: 60-90% cost reduction effect
+   - **Prompt Cache**: Token reduction through automatic activation
+   - **Model Selection**: Strategic use of Sonnet (efficiency) → Opus (quality)
+   - **Debug Agent**: Cost control with Sonnet
+2. **Session Management Reality**:
+   - **Foundation Session ID**: Reliably save as starting point for all agents
+   - **Automatic New Session Generation**: Utilize Claude Code's safe design
+   - **File Conflict Avoidance**: Automatically write to independent files
+   - **Maintain Cache Effect**: Continued cost reduction through session inheritance
+3. **Wait Times**: Time settings considering acceleration from cache effect
+4. **Error Handling**: 
+   - Alternative approach for session duplication failure
+   - Handling when cache effect not obtained
+   - Process management improvements
+5. **Cleanup**: Properly handle previous deliverables (backup or delete)
+6. **Utilizing Parallel Execution**:
+   - Multiple agents can be launched simultaneously from foundation session
+   - Risk avoidance through independence guarantee
+   - Throughput improvement effect
 
-## 拡張可能性
+## Extensibility
 
-このワークフローは以下のような拡張が可能：
+This workflow can be extended as follows:
 
-- **テストエージェント**: 修正後の自動テスト実行
-- **ドキュメントエージェント**: 変更履歴の自動文書化
-- **デプロイエージェント**: 修正の自動デプロイ
-- **監視エージェント**: 修正後のシステム監視
+- **Test Agent**: Automated test execution after fixes
+- **Documentation Agent**: Automated documentation of change history
+- **Deploy Agent**: Automated deployment of fixes
+- **Monitoring Agent**: System monitoring after fixes
 
-## エラー処理のポイント
+## Key Error Handling Points
 
-### 基本エラー処理
-- **ファイルが見つからない場合**: Readツールのエラーを適切に処理し、報告する
-- **タイムアウトの場合**: mcp__ccm__get_claude_resultで状態を確認し、必要に応じて再試行
-- **プロセス異常終了の場合**: mcp__ccm__list_claude_processesで状態を確認し、クリーンアップ
+### Basic Error Handling
+- **File not found**: Properly handle Read tool errors and report
+- **Timeout**: Check status with mcp__ccm__get_claude_result, retry as needed
+- **Process abnormal termination**: Check status with mcp__ccm__list_claude_processes and clean up
 
-### セッション関連エラー処理
-- **基盤セッション作成失敗**: 従来の新規セッション方式にフォールバック
-- **キャッシュ効果なし**: 実行継続（効率は下がるが機能に影響なし）
-- **セッション継承失敗**: 新規セッションで再実行
+### Session-Related Error Handling
+- **Foundation session creation failure**: Fallback to traditional new session approach
+- **No cache effect**: Continue execution (efficiency decreases but functionality unaffected)
+- **Session inheritance failure**: Re-execute with new session
 
-### パフォーマンス監視
-- **usage統計の確認**: cache_read_input_tokensでキャッシュ効果を検証
-- **コスト異常時**: 基盤セッション戦略の見直し
-- **実行時間監視**: キャッシュ効果による短縮を測定
+### Performance Monitoring
+- **Check usage statistics**: Verify cache effect with cache_read_input_tokens
+- **Cost anomaly**: Review foundation session strategy
+- **Execution time monitoring**: Measure reduction from cache effect
 
-このワークフローにより、複雑なバグ修正も体系的かつ効率的に実施できます。
+This workflow enables systematic and efficient implementation of even complex bug fixes.

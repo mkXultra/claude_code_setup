@@ -1,634 +1,634 @@
-# 複数エージェントによる調査・分析ワークフロー
+# Multi-Agent Investigation & Analysis Workflow
 
-## 概要
+## Overview
 
-このドキュメントは、Claude Code MCP（`mcp__ccm__claude_code`）と Chat MCP（`mcp__chat__agent_communication_*`）を使用して、複数の専門エージェントを協調させ、複雑な調査・分析タスクを効率的に実行するワークフローを記述します。
+This document describes a workflow for efficiently executing complex investigation and analysis tasks by coordinating multiple specialized agents using Claude Code MCP (`mcp__ccm__claude_code`) and Chat MCP (`mcp__chat__agent_communication_*`).
 
-**対象読者**: このドキュメントはClaude Codeが参照して、複数エージェントによる調査・分析を実行するためのガイドです。
+**Target Audience**: This document serves as a guide for Claude Code to execute multi-agent investigation and analysis.
 
-**適用領域**: 
-- 大規模コードベースの調査
-- システム設計の分析
-- ドキュメント統合・整理
-- アーキテクチャ調査
-- セキュリティ監査
-- パフォーマンス分析
+**Application Areas**: 
+- Large-scale codebase investigation
+- System design analysis
+- Document integration and organization
+- Architecture investigation
+- Security audits
+- Performance analysis
 
-## ワークフローの核心原則
+## Core Principles of the Workflow
 
-### 1. 適応的専門化
-- **初期設計**: 4-6個の専門領域に分割
-- **動的拡張**: 調査中の発見に応じてエージェント追加
-- **最適配置**: 各エージェントの専門性を最大活用
+### 1. Adaptive Specialization
+- **Initial Design**: Divide into 4-6 specialized areas
+- **Dynamic Expansion**: Add agents based on discoveries during investigation
+- **Optimal Deployment**: Maximize utilization of each agent's expertise
 
-### 2. 継続実行プロトコル
-- **自動終了防止**: 明示的終了指示まで待機継続
-- **適応的チェック**: 段階的間隔（初期2分→中期3分→後期5分）
-- **タイムアウト管理**: 最大60-90分の実行時間制限
+### 2. Continuous Execution Protocol
+- **Automatic Termination Prevention**: Continue waiting until explicit termination instruction
+- **Adaptive Check Intervals**: Phased intervals (Initial 2min → Mid 3min → Late 5min)
+- **Timeout Management**: Maximum execution time limit of 60-90 minutes
 
-### 3. 集合知統合
-- **並行調査**: 複数領域の同時進行
-- **相互参照**: 発見内容の共有とクロスチェック
-- **高品質統合**: Opusモデルによる最終統合
+### 3. Collective Intelligence Integration
+- **Parallel Investigation**: Simultaneous progress in multiple areas
+- **Cross-referencing**: Sharing discoveries and cross-checking
+- **High-quality Integration**: Final integration using Opus model
 
-## ワークフローの構成要素
+## Workflow Components
 
-### Phase 0: 戦略設計と環境準備
+### Phase 0: Strategic Design and Environment Preparation
 
-#### 0.1 調査対象の分析と専門領域の特定
+#### 0.1 Analysis of Investigation Target and Identification of Specialized Areas
 ```
-調査対象の特性分析:
-- 技術的複雑さ（コード、設定、ドキュメント）
-- 規模（ファイル数、ディレクトリ構造）
-- 関係者（開発者、ユーザー、管理者）
-- 期待される成果物
+Analysis of Investigation Target Characteristics:
+- Technical complexity (code, configuration, documentation)
+- Scale (number of files, directory structure)
+- Stakeholders (developers, users, administrators)
+- Expected deliverables
 
-専門領域分割の例:
-- コードベース調査: アーキテクチャ、API、UI、DB、インフラ
-- ドキュメント整理: 設計書、仕様書、手順書、テスト資料
-- セキュリティ監査: 認証、認可、データ保護、ネットワーク
+Examples of Specialized Area Division:
+- Codebase Investigation: Architecture, API, UI, DB, Infrastructure
+- Document Organization: Design docs, Specifications, Procedures, Test materials
+- Security Audit: Authentication, Authorization, Data protection, Network
 ```
 
-#### 0.2 Chat MCPルーム作成
+#### 0.2 Chat MCP Room Creation
 ```bash
-# ルーム名の命名規則: [project]-[task]-[version]
-# 例: permission-investigation-v2, security-audit-v1
+# Room naming convention: [project]-[task]-[version]
+# Examples: permission-investigation-v2, security-audit-v1
 ```
 
-#### 0.3 エージェント役割設計テンプレート（最適化版）
+#### 0.3 Agent Role Design Template (Optimized Version)
 ```
-Agent [A-Z] ([role-name]) - [専門分野]調査担当
+Agent [A-Z] ([role-name]) - [Specialized Area] Investigation Lead
 
-【重要: 継続実行プロトコル】
-1. タスク完了後は「TASK_COMPLETED」と報告
-2. その後、適応的間隔でチャットルーム「[room-name]」をチェック:
-   - 初期: 2分間隔
-   - 中期: 3分間隔  
-   - 後期: 5分間隔
-3. coordinatorからのメッセージを確認:
-   - "terminate_[agent-id]": 終了処理を実行
-   - "new_task_[agent-id]": 新しいタスクを開始
-   - "status_[agent-id]": 現在の状態を報告
-   - 上記以外: 待機継続
-4. 最大待機時間: 60分、無応答タイムアウト: 5分
+[IMPORTANT: Continuous Execution Protocol]
+1. Report "TASK_COMPLETED" after task completion
+2. Then check chat room "[room-name]" at adaptive intervals:
+   - Initial: 2-minute intervals
+   - Mid: 3-minute intervals  
+   - Late: 5-minute intervals
+3. Check for messages from coordinator:
+   - "terminate_[agent-id]": Execute termination process
+   - "new_task_[agent-id]": Start new task
+   - "status_[agent-id]": Report current status
+   - Other: Continue waiting
+4. Maximum wait time: 60 minutes, No-response timeout: 5 minutes
 
-【調査タスク】
-[具体的な調査内容1-5項目]
+[Investigation Tasks]
+[Specific investigation items 1-5]
 
-【品質基準（必須）】
-- COVERAGE_SCORE: 調査網羅度（0-100）
-- ACCURACY_SCORE: 情報正確度（0-100）
-- USABILITY_SCORE: 実用性評価（0-100）
-- CONFIDENCE_LEVEL: 信頼度（HIGH/MEDIUM/LOW）
+[Quality Criteria (Required)]
+- COVERAGE_SCORE: Investigation coverage (0-100)
+- ACCURACY_SCORE: Information accuracy (0-100)
+- USABILITY_SCORE: Practicality evaluation (0-100)
+- CONFIDENCE_LEVEL: Confidence level (HIGH/MEDIUM/LOW)
 
-【報告フォーマット（標準化）】
-[PROGRESS] X/Y完了
-[FINDING] 重要な発見の概要
-[ANALYSIS] 分析結果と解釈
-[RECOMMENDATIONS] 推奨事項
+[Report Format (Standardized)]
+[PROGRESS] X/Y completed
+[FINDING] Summary of important discoveries
+[ANALYSIS] Analysis results and interpretation
+[RECOMMENDATIONS] Recommendations
 [QUALITY_SCORES] Coverage:XX, Accuracy:XX, Usability:XX
 [CONFIDENCE] HIGH/MEDIUM/LOW
-[DEPENDENCIES] 他エージェントとの関連性
-[NEXT] 次のアクション
+[DEPENDENCIES] Relevance to other agents
+[NEXT] Next action
 [STATUS] ACTIVE/WAITING/CHECKING
 
-まず mcp__chat__agent_communication_enter_room で [room-name] ルームに参加してから調査を開始してください。
+Please join the [room-name] room using mcp__chat__agent_communication_enter_room before starting the investigation.
 ```
 
-### Phase 1: 段階的調査実行（最適化版）
+### Phase 1: Phased Investigation Execution (Optimized Version)
 
-#### 1.1 段階的エージェント起動戦略
+#### 1.1 Phased Agent Launch Strategy
 ```bash
-# Phase 1a: 基盤調査（並行起動）
-Agent A: アーキテクチャ・構造調査
-Agent D: ドキュメント・資料調査
+# Phase 1a: Foundation Investigation (Parallel Launch)
+Agent A: Architecture & Structure Investigation
+Agent D: Documentation & Materials Investigation
 
-# 完了確認後にPhase 1b
-# Phase 1b: 専門調査（条件付き並行）
-Agent B: 実装詳細・コード調査（A完了後）
-Agent C: 設定・ルール調査（独立）
-Agent E,F: 専門ディレクトリ調査（D完了後）
+# Phase 1b after completion check
+# Phase 1b: Specialized Investigation (Conditional Parallel)
+Agent B: Implementation Details & Code Investigation (after A completes)
+Agent C: Configuration & Rules Investigation (Independent)
+Agent E,F: Specialized Directory Investigation (after D completes)
 
-# 全完了後にPhase 1c
-# Phase 1c: 統合作業
-Agent G: 統合レポート作成（Opus）
+# Phase 1c after all complete
+# Phase 1c: Integration Work
+Agent G: Integrated Report Creation (Opus)
 ```
 
-#### 1.2 起動タイミング制御の実装
+#### 1.2 Launch Timing Control Implementation
 ```bash
-# 基盤エージェント起動
+# Launch foundation agents
 mcp__ccm__claude_code [Agent A prompt] &
 mcp__ccm__claude_code [Agent D prompt] &
 
-# 完了待機（適応的間隔）
-sleep 120  # 初期2分待機
-mcp__ccm__list_claude_processes  # 状況確認
+# Wait for completion (adaptive intervals)
+sleep 120  # Initial 2-minute wait
+mcp__ccm__list_claude_processes  # Status check
 
-# 条件分岐による次段階起動
-if [基盤調査完了]; then
+# Conditional branching for next phase launch
+if [foundation investigation complete]; then
     mcp__ccm__claude_code [Agent B prompt] &
     mcp__ccm__claude_code [Agent C prompt] &
-    # 追加専門エージェント（発見に応じて）
+    # Additional specialized agents (based on discoveries)
 fi
 ```
 
-#### 1.3 進捗監視とコラボレーション管理（最適化版）
+#### 1.3 Progress Monitoring and Collaboration Management (Optimized Version)
 ```
-監視間隔（適応的）:
-- 初期段階: 2分間隔（起動直後の安定性確認）
-- 中期段階: 3分間隔（安定稼働時）
-- 後期段階: 5分間隔（長時間作業時）
+Monitoring Intervals (Adaptive):
+- Initial stage: 2-minute intervals (stability check after launch)
+- Mid stage: 3-minute intervals (during stable operation)
+- Late stage: 5-minute intervals (for long-duration work)
 
-レポート頻度: エージェントの5分毎自動報告
-重要発見: 即座にチャット共有（緊急度分類）
+Report frequency: Agent's automatic report every 5 minutes
+Important discoveries: Immediate chat sharing (urgency classification)
 
-コーディネーターの役割:
-- 段階的進捗確認（効率的リソース管理）
-- 新しい発見への対応
-- 追加エージェントの必要性判断
-- エージェント間の情報連携
-- 待機時間の動的調整
-```
-
-#### 1.4 動的エージェント追加の判断基準
-```
-追加タイミング:
-✓ 新しい重要ディレクトリ/ファイル群の発見
-✓ 予想以上の複雑性や規模
-✓ 特殊な技術領域の発見
-✓ 既存エージェントの負荷過多
-
-追加手順:
-1. 新専門領域の特定
-2. 専門エージェントプロンプト作成
-3. mcp__ccm__claude_code で起動
-4. Chat MCPルームへの参加確認
+Coordinator's Role:
+- Phased progress confirmation (efficient resource management)
+- Response to new discoveries
+- Judgment on need for additional agents
+- Information coordination between agents
+- Dynamic adjustment of wait times
 ```
 
-### Phase 2: 統合・検証・品質向上
+#### 1.4 Dynamic Agent Addition Criteria
+```
+Addition Timing:
+✓ Discovery of new important directories/file groups
+✓ Unexpected complexity or scale
+✓ Discovery of specialized technical areas
+✓ Overload of existing agents
 
-#### 2.1 専門エージェント完了の確認
+Addition Procedure:
+1. Identify new specialized area
+2. Create specialized agent prompt
+3. Launch with mcp__ccm__claude_code
+4. Confirm joining Chat MCP room
+```
+
+### Phase 2: Integration, Verification, and Quality Improvement
+
+#### 2.1 Confirming Completion of Specialized Agents
 ```bash
-# 全エージェントの状況確認
+# Check status of all agents
 mcp__ccm__list_claude_processes
 mcp__chat__agent_communication_get_messages
 
-# 完了判定基準
-- 全エージェントからの "TASK_COMPLETED" 受信
-- 各エージェントのstatus: "completed"
-- 期待される成果物の生成確認
+# Completion criteria
+- Received "TASK_COMPLETED" from all agents
+- Each agent's status: "completed"
+- Confirmation of expected deliverables generation
 ```
 
-#### 2.2 統合エージェント（Opus）の起動
+#### 2.2 Launch of Integration Agent (Opus)
 ```
-統合専門エージェント仕様:
-- モデル: "opus"（高品質統合のため）
-- 最大実行時間: 90分
-- 入力: 全エージェントのチャット履歴 + 成果物
-- 出力: 包括的統合レポート群
+Integration Specialized Agent Specifications:
+- Model: "opus" (for high-quality integration)
+- Maximum execution time: 90 minutes
+- Input: All agents' chat history + deliverables
+- Output: Comprehensive integrated report set
 
-必須成果物テンプレート:
-1. [task]-final-report.md - 全体統合レポート
-2. [domain]-analysis-matrix.md - 詳細分析マトリックス
-3. [task]-implementation-guide.md - 実装ガイド
-4. [task]-workflow-diagram.md - フロー図・関係図
-5. [task]-action-plan.md - 次のアクション計画
-```
-
-## エージェント設計のベストプラクティス
-
-### 1. 専門性の明確化
-```
-良い例:
-- Agent A: src/router/配下のルーティング実装専門
-- Agent B: Vue/Nuxtコンポーネント構造専門
-- Agent C: CASL権限システム実装専門
-
-悪い例:
-- Agent A: フロントエンド全般担当
-- Agent B: バックエンド全般担当
+Required Deliverables Template:
+1. [task]-final-report.md - Overall integrated report
+2. [domain]-analysis-matrix.md - Detailed analysis matrix
+3. [task]-implementation-guide.md - Implementation guide
+4. [task]-workflow-diagram.md - Flow diagrams & relationship diagrams
+5. [task]-action-plan.md - Next action plan
 ```
 
-### 2. 重複回避と連携設計
-```
-重複回避:
-- ファイル/ディレクトリ担当を明確に分離
-- 調査観点（構造 vs 実装 vs 設定）で分離
+## Best Practices for Agent Design
 
-連携設計:
-- 発見した関連情報の即座共有
-- 依存関係の明確化
-- 矛盾検出と解決メカニズム
+### 1. Clarification of Specialization
 ```
+Good Examples:
+- Agent A: Routing implementation specialist in src/router/
+- Agent B: Vue/Nuxt component structure specialist
+- Agent C: CASL permission system implementation specialist
 
-### 3. モデル選択指針
-```
-Sonnet適用領域:
-- 構造的分析（ディレクトリ構造、設定ファイル）
-- パターン抽出（コード規約、命名規則）
-- データ変換（CSV生成、マッピング作成）
-- 定型的な調査タスク
-
-Opus適用領域:
-- 最終統合レポート作成
-- 複雑な関係性の分析
-- 戦略的な提案・改善案
-- 品質重視の成果物作成
+Bad Examples:
+- Agent A: General frontend
+- Agent B: General backend
 ```
 
-## Chat MCPコラボレーション管理
-
-### 1. メッセージング規約
+### 2. Avoiding Duplication and Coordination Design
 ```
-進捗報告フォーマット:
-[PROGRESS] X/Y完了
-[FINDING] 重要な発見
-[NEXT] 次のアクション
+Avoiding Duplication:
+- Clearly separate file/directory responsibilities
+- Separate by investigation perspective (structure vs implementation vs configuration)
+
+Coordination Design:
+- Immediate sharing of discovered related information
+- Clarification of dependencies
+- Contradiction detection and resolution mechanism
+```
+
+### 3. Model Selection Guidelines
+```
+Sonnet Application Areas:
+- Structural analysis (directory structure, configuration files)
+- Pattern extraction (code conventions, naming rules)
+- Data transformation (CSV generation, mapping creation)
+- Routine investigation tasks
+
+Opus Application Areas:
+- Final integrated report creation
+- Complex relationship analysis
+- Strategic proposals and improvements
+- Quality-focused deliverables creation
+```
+
+## Chat MCP Collaboration Management
+
+### 1. Messaging Convention
+```
+Progress Report Format:
+[PROGRESS] X/Y completed
+[FINDING] Important discovery
+[NEXT] Next action
 [STATUS] ACTIVE/WAITING/CHECKING
 
-重要発見の共有:
-[URGENT] 緊急度の高い発見
-[INFO] 他エージェントへの情報提供
-[QUESTION] 他エージェントへの質問
+Important Discovery Sharing:
+[URGENT] High-urgency discovery
+[INFO] Information provision to other agents
+[QUESTION] Question to other agents
 
-コーディネーター指示:
-status_[agent-id] - 状況確認要求
-new_task_[agent-id] - 新タスク指示
-terminate_[agent-id] - 終了指示
-terminate_all - 全エージェント終了
+Coordinator Instructions:
+status_[agent-id] - Status check request
+new_task_[agent-id] - New task instruction
+terminate_[agent-id] - Termination instruction
+terminate_all - Terminate all agents
 ```
 
-### 2. 情報共有のタイミング
+### 2. Information Sharing Timing
 ```
-即座共有すべき発見:
-- 新しい重要ディレクトリ/ファイル群
-- 既存想定と大きく異なる構造
-- 他エージェントに影響する情報
-- セキュリティ関連の発見
+Discoveries to Share Immediately:
+- New important directories/file groups
+- Structure significantly different from existing assumptions
+- Information affecting other agents
+- Security-related discoveries
 
-定期報告内容:
-- 調査進捗（X/Y完了）
-- 主要な発見事項
-- 次の調査予定
-- 支援が必要な項目
-```
-
-## 成功事例: Permission調査システム
-
-### 調査背景
-```
-課題: 
-- URLごとの操作権限資料が見つからない
-- 画面ごとの操作資料が散在
-- 画面遷移関係が不明確
-
-期待成果:
-- 包括的権限資料の作成
-- テスト実行可能な手順書
-- 画面遷移フロー図
+Regular Report Contents:
+- Investigation progress (X/Y completed)
+- Major discoveries
+- Next investigation plans
+- Items requiring support
 ```
 
-### エージェント構成の進化
-```
-初期設計（4エージェント）:
-- Agent A: ルーティング・URL調査
-- Agent B: 画面遷移・操作フロー調査
-- Agent C: 権限実装調査
-- Agent D: 資料統合調査
+## Success Case Study: Permission Investigation System
 
-発見による拡張:
-+ Agent E: docs/ディレクトリ専門調査
-+ Agent F: test_cases/ディレクトリ専門調査
-+ Agent G: 統合レポート作成（Opus）
-
-総調査時間: 約20分（7エージェント並行）
+### Investigation Background
 ```
+Challenges: 
+- Unable to find operation permission materials for each URL
+- Operation materials for each screen scattered
+- Screen transition relationships unclear
 
-### 成功要因
-```
-1. 適応的設計: 発見に応じた動的拡張
-2. 継続実行: エージェントの自動終了防止
-3. 専門化: 各エージェントの明確な役割分担
-4. 品質統合: Opusによる高品質な最終成果物
-5. 実用性重視: ユーザーニーズに直接対応する成果物
+Expected Results:
+- Creation of comprehensive permission materials
+- Test-executable procedure manual
+- Screen transition flow diagram
 ```
 
-### 創出された価値
+### Evolution of Agent Configuration
 ```
-成果物（5ファイル）:
+Initial Design (4 agents):
+- Agent A: Routing & URL investigation
+- Agent B: Screen transition & operation flow investigation
+- Agent C: Permission implementation investigation
+- Agent D: Material integration investigation
+
+Expansion based on discoveries:
++ Agent E: docs/ directory specialized investigation
++ Agent F: test_cases/ directory specialized investigation
++ Agent G: Integrated report creation (Opus)
+
+Total investigation time: About 20 minutes (7 agents in parallel)
+```
+
+### Success Factors
+```
+1. Adaptive Design: Dynamic expansion based on discoveries
+2. Continuous Execution: Prevention of automatic agent termination
+3. Specialization: Clear role division for each agent
+4. Quality Integration: High-quality final deliverables by Opus
+5. Practicality Focus: Deliverables directly addressing user needs
+```
+
+### Value Created
+```
+Deliverables (5 files):
 1. permission-investigation-final-report.md (7,546B)
 2. screen-operation-matrix.md (9,473B) 
 3. url-access-control-guide.md (9,214B)
 4. screen-transition-flow.md (8,438B)
 5. permission-test-execution-guide.md (10,946B)
 
-従来手法との比較:
-- 調査時間: 数日 → 20分
-- 網羅性: 部分的 → 完全
-- 品質: バラツキあり → 一定品質
-- 実用性: 限定的 → 即座に使用可能
+Comparison with Traditional Methods:
+- Investigation time: Several days → 20 minutes
+- Coverage: Partial → Complete
+- Quality: Variable → Consistent quality
+- Practicality: Limited → Immediately usable
 ```
 
-## 他の適用例
+## Other Application Examples
 
-### 1. セキュリティ監査
+### 1. Security Audit
 ```
-エージェント構成:
-- Agent A: 認証・認可システム調査
-- Agent B: データ保護・暗号化調査
-- Agent C: ネットワークセキュリティ調査
-- Agent D: 脆弱性パターン調査
-- Agent E: セキュリティポリシー・設定調査
+Agent Configuration:
+- Agent A: Authentication & authorization system investigation
+- Agent B: Data protection & encryption investigation
+- Agent C: Network security investigation
+- Agent D: Vulnerability pattern investigation
+- Agent E: Security policy & configuration investigation
 
-期待成果物:
-- セキュリティ監査レポート
-- 脆弱性リスクマトリックス
-- 改善アクションプラン
-- セキュリティテスト手順書
-```
-
-### 2. パフォーマンス分析
-```
-エージェント構成:
-- Agent A: フロントエンドパフォーマンス調査
-- Agent B: バックエンドパフォーマンス調査
-- Agent C: データベースパフォーマンス調査
-- Agent D: ネットワーク・インフラ調査
-- Agent E: 監視・ログ分析
-
-期待成果物:
-- パフォーマンス分析レポート
-- ボトルネック特定結果
-- 最適化実装ガイド
-- 監視・測定手順書
+Expected Deliverables:
+- Security audit report
+- Vulnerability risk matrix
+- Improvement action plan
+- Security test procedure manual
 ```
 
-### 3. アーキテクチャ分析
+### 2. Performance Analysis
 ```
-エージェント構成:
-- Agent A: システム構成・依存関係調査
-- Agent B: データフロー・API調査
-- Agent C: UI/UXアーキテクチャ調査
-- Agent D: インフラ・デプロイ調査
-- Agent E: 設計文書・仕様書調査
+Agent Configuration:
+- Agent A: Frontend performance investigation
+- Agent B: Backend performance investigation
+- Agent C: Database performance investigation
+- Agent D: Network & infrastructure investigation
+- Agent E: Monitoring & log analysis
 
-期待成果物:
-- システムアーキテクチャドキュメント
-- 技術スタック分析レポート
-- 改善・近代化提案
-- 移行計画・ロードマップ
+Expected Deliverables:
+- Performance analysis report
+- Bottleneck identification results
+- Optimization implementation guide
+- Monitoring & measurement procedure manual
 ```
 
-## エラー処理とトラブルシューティング
+### 3. Architecture Analysis
+```
+Agent Configuration:
+- Agent A: System configuration & dependency investigation
+- Agent B: Data flow & API investigation
+- Agent C: UI/UX architecture investigation
+- Agent D: Infrastructure & deployment investigation
+- Agent E: Design document & specification investigation
 
-### 1. エージェント異常終了への対応
+Expected Deliverables:
+- System architecture document
+- Technology stack analysis report
+- Improvement & modernization proposals
+- Migration plan & roadmap
+```
+
+## Error Handling and Troubleshooting
+
+### 1. Handling Agent Abnormal Termination
 ```bash
-# プロセス状況確認
+# Check process status
 mcp__ccm__list_claude_processes
 
-# 異常終了したエージェントの特定
-# exitCode != 0 または status != "running"/"completed"
+# Identify abnormally terminated agents
+# exitCode != 0 or status != "running"/"completed"
 
-# 復旧手順
-1. 異常終了の原因特定（ログ確認）
-2. 同等機能エージェントの再起動
-3. 失われた調査内容の補完
-4. 他エージェントへの影響評価
+# Recovery procedure
+1. Identify cause of abnormal termination (check logs)
+2. Restart agent with equivalent functionality
+3. Supplement lost investigation content
+4. Evaluate impact on other agents
 ```
 
-### 2. Chat MCP通信エラー
+### 2. Chat MCP Communication Errors
 ```bash
-# ルーム状況確認
+# Check room status
 mcp__chat__agent_communication_get_status
 
-# 通信エラーの対処
-1. ルーム再作成（別名で）
-2. エージェントの新ルーム移行
-3. 過去メッセージの復旧
+# Handling communication errors
+1. Recreate room (with different name)
+2. Migrate agents to new room
+3. Recover past messages
 ```
 
-### 3. リソース不足・タイムアウト
+### 3. Resource Shortage & Timeout
 ```
-対処法:
-1. 調査範囲の縮小・分割
-2. 低優先度タスクの削除
-3. 待機時間の延長
-4. エージェント数の削減
+Countermeasures:
+1. Reduce/divide investigation scope
+2. Delete low-priority tasks
+3. Extend wait time
+4. Reduce number of agents
 
-予防策:
-- 初期範囲設定を保守的に
-- 段階的な拡張方針
-- リソース使用量の継続監視
-```
-
-## タスク管理のベストプラクティス
-
-### TodoWriteツールによる進捗管理
-```
-推奨タスク構造:
-1. 環境準備・エージェント起動
-2. [Agent-X] 専門調査実行
-3. エージェント間コラボレーション管理
-4. 統合エージェント起動・監視
-5. 成果物品質確認・納品
-
-各タスクの粒度:
-- 大きすぎる: エージェント群の並行実行
-- 適切: 各エージェントの個別管理
-- 小さすぎる: 個別ファイルの調査
+Preventive Measures:
+- Set initial scope conservatively
+- Phased expansion policy
+- Continuous monitoring of resource usage
 ```
 
-### 進捗可視化
-```
-状況サマリーの定期更新:
-✅ 完了エージェント数 / 総エージェント数
-🔄 進行中の主要タスク
-⚠️ 問題・ブロッカー
-📊 成果物生成状況
-⏱️ 残り推定時間
-```
+## Best Practices for Task Management
 
-## ワークフローの拡張可能性
-
-### 1. 自動化レベルの向上
+### Progress Management with TodoWrite Tool
 ```
-現状: 手動監視・判断
-改善1: 異常検知の自動化
-改善2: エージェント追加の自動判断
-改善3: 成果物品質の自動評価
+Recommended Task Structure:
+1. Environment preparation & agent launch
+2. [Agent-X] Specialized investigation execution
+3. Inter-agent collaboration management
+4. Integration agent launch & monitoring
+5. Deliverable quality confirmation & delivery
+
+Task Granularity:
+- Too large: Parallel execution of agent groups
+- Appropriate: Individual management of each agent
+- Too small: Investigation of individual files
 ```
 
-### 2. ドメイン特化テンプレート
+### Progress Visualization
 ```
-業界別テンプレート:
-- 金融システム監査
-- 医療システム調査
-- ECサイト分析
-- SaaS製品評価
-
-技術別テンプレート:
-- React/Vue.js アプリ調査
-- Node.js/Python API分析
-- AWS/GCP インフラ調査
-- Docker/Kubernetes 環境分析
+Regular Status Summary Updates:
+✅ Completed agents / Total agents
+🔄 Major tasks in progress
+⚠️ Issues & blockers
+📊 Deliverable generation status
+⏱️ Estimated remaining time
 ```
 
-### 3. 外部ツール統合
-```
-発展可能性:
-- CI/CD パイプライン統合
-- 監視システム連携
-- プロジェクト管理ツール連携
-- ナレッジベース自動更新
-```
+## Workflow Extensibility
 
-## 品質保証指針
-
-### 1. 成果物品質基準
+### 1. Automation Level Improvement
 ```
-必須要件:
-✓ 実用性: 即座に使用可能
-✓ 完全性: 調査対象の全領域カバー
-✓ 正確性: 事実に基づく正確な情報
-✓ 構造化: 論理的で読みやすい構成
-✓ 実行可能性: 具体的なアクション指針
-
-品質チェックポイント:
-- 専門エージェントの成果物相互チェック
-- Opus統合エージェントによる品質向上
-- 最終成果物の実用性検証
+Current: Manual monitoring & judgment
+Improvement 1: Automated anomaly detection
+Improvement 2: Automated judgment for agent addition
+Improvement 3: Automated deliverable quality evaluation
 ```
 
-### 2. プロセス品質管理
+### 2. Domain-Specific Templates
 ```
-監視指標:
-- エージェント稼働率（目標: 95%以上）
-- タスク完了率（目標: 100%）
-- 成果物生成率（目標: 期待ファイル100%）
-- 調査網羅率（目標: 対象領域100%）
+Industry-Specific Templates:
+- Financial system audit
+- Medical system investigation
+- E-commerce site analysis
+- SaaS product evaluation
 
-改善サイクル:
-1. 実行結果の振り返り
-2. 問題点・改善点の特定
-3. プロセス・プロンプトの改良
-4. 次回適用での検証
-```
-
-## コスト最適化
-
-### 1. モデル選択最適化
-```
-コスト効率の原則:
-- Sonnet: 構造的・定型的調査（70%）
-- Opus: 複雑分析・統合作業（30%）
-
-具体的配分例（7エージェント）:
-- 専門調査（A-F）: Sonnet × 6
-- 統合作業（G）: Opus × 1
-- コスト比: 約 1:2 の配分
+Technology-Specific Templates:
+- React/Vue.js app investigation
+- Node.js/Python API analysis
+- AWS/GCP infrastructure investigation
+- Docker/Kubernetes environment analysis
 ```
 
-### 2. 実行時間最適化（改良版）
+### 3. External Tool Integration
 ```
-効率化手法:
-- 段階的並行実行（2→4→6エージェント）
-- 適応的待機時間（2分→3分→5分）
-- 依存関係を考慮した起動順序
-- 調査範囲の事前明確化
-- リソース競合の回避
-
-具体的実装:
-# Phase 1a: 基盤調査（2エージェント）
-sleep 120  # 2分待機
-# Phase 1b: 専門調査（4エージェント追加）
-sleep 180  # 3分待機
-# Phase 1c: 統合作業（1エージェント追加）
-sleep 300  # 5分待機
-
-目標実行時間（最適化後）:
-- 小規模調査: 8-12分（20%短縮）
-- 中規模調査: 15-25分（25%短縮）  
-- 大規模調査: 35-50分（22%短縮）
+Development Possibilities:
+- CI/CD pipeline integration
+- Monitoring system integration
+- Project management tool integration
+- Automatic knowledge base updates
 ```
 
-## 注意事項
+## Quality Assurance Guidelines
 
-### 1. リソース管理
+### 1. Deliverable Quality Standards
 ```
-同時実行制限:
-- 最大エージェント数: 8個まで
-- Opusエージェント: 同時1個まで
-- メモリ使用量の監視
-- Chat MCPメッセージ数の管理
-```
+Required Standards:
+✓ Practicality: Immediately usable
+✓ Completeness: Coverage of all areas of investigation target
+✓ Accuracy: Accurate information based on facts
+✓ Structure: Logical and readable composition
+✓ Actionability: Specific action guidelines
 
-### 2. セキュリティ考慮事項
-```
-情報保護:
-- 機密情報を含むファイルの除外
-- Chat MCPログの適切な管理
-- 成果物の機密レベル分類
-- 外部共有時の注意事項
+Quality Checkpoints:
+- Cross-checking of specialized agent deliverables
+- Quality improvement by Opus integration agent
+- Practicality verification of final deliverables
 ```
 
-### 3. 運用上の制約
+### 2. Process Quality Management
 ```
-制限事項:
-- ネットワーク接続の依存性
-- APIレート制限の影響
-- ローカルリソースの制約
-- 長時間実行時の安定性
-```
+Monitoring Metrics:
+- Agent uptime (Target: 95% or higher)
+- Task completion rate (Target: 100%)
+- Deliverable generation rate (Target: 100% of expected files)
+- Investigation coverage rate (Target: 100% of target areas)
 
-## 最適化による改善効果
-
-### 実装済み改善の期待効果
-```
-✅ 段階的エージェント起動:
-- 実行時間: 10-15% 短縮
-- リソース効率: 20-30% 向上
-- システム安定性: 大幅向上
-
-✅ 適応的監視間隔:
-- 通信負荷: 40-50% 削減
-- 監視効率: 25% 向上
-
-✅ プロンプト品質標準化:
-- 成果物品質: 15-20% 向上
-- 統合作業効率: 30% 向上
-- 一貫性: 85% 向上
-
-総合改善効果:
-- 実行時間: 20-25% 短縮
-- コスト効率: 15-20% 向上
-- 品質一貫性: 大幅向上
-- システム安定性: 大幅向上
+Improvement Cycle:
+1. Review of execution results
+2. Identification of problems & improvements
+3. Process & prompt refinement
+4. Verification in next application
 ```
 
-### 適用前後の比較
+## Cost Optimization
+
+### 1. Model Selection Optimization
 ```
-従来版:
-- 7エージェント一斉起動
-- 1分間隔固定監視
-- 実行時間: 20分
-- リソース競合リスク: 高
+Cost Efficiency Principles:
+- Sonnet: Structural & routine investigation (70%)
+- Opus: Complex analysis & integration work (30%)
 
-最適化版:
-- 段階的起動（2→4→1）
-- 適応的監視（2→3→5分）
-- 実行時間: 15-17分
-- リソース競合リスク: 低
+Specific Allocation Example (7 agents):
+- Specialized investigation (A-F): Sonnet × 6
+- Integration work (G): Opus × 1
+- Cost ratio: Approximately 1:2 allocation
 ```
 
-## まとめ
+### 2. Execution Time Optimization (Improved Version)
+```
+Efficiency Methods:
+- Phased parallel execution (2→4→6 agents)
+- Adaptive wait times (2min→3min→5min)
+- Launch order considering dependencies
+- Pre-clarification of investigation scope
+- Resource conflict avoidance
 
-このワークフローは、複雑な調査・分析タスクを複数のAIエージェントで効率的に実行するための包括的なフレームワークです。適応的な設計、継続実行の保証、品質の高い統合により、従来の手動調査では困難な規模と品質の成果物を短時間で創出できます。
+Specific Implementation:
+# Phase 1a: Foundation investigation (2 agents)
+sleep 120  # 2-minute wait
+# Phase 1b: Specialized investigation (4 additional agents)
+sleep 180  # 3-minute wait
+# Phase 1c: Integration work (1 additional agent)
+sleep 300  # 5-minute wait
 
-**最適化された核心的価値**: 
-- 人間の認知負荷軽減（段階的管理により）
-- 調査品質の標準化・向上（品質メトリクス導入）
-- 作業時間の大幅短縮（20-25%の効率向上）
-- 再利用可能な知識の蓄積
-- システム安定性の向上（リソース競合回避）
+Target Execution Times (After Optimization):
+- Small-scale investigation: 8-12 minutes (20% reduction)
+- Medium-scale investigation: 15-25 minutes (25% reduction)  
+- Large-scale investigation: 35-50 minutes (22% reduction)
+```
 
-このワークフローを活用することで、複雑なシステムやプロジェクトの理解促進、意思決定支援、品質向上を実現できます。
+## Precautions
+
+### 1. Resource Management
+```
+Concurrent Execution Limits:
+- Maximum agents: Up to 8
+- Opus agents: Maximum 1 concurrent
+- Memory usage monitoring
+- Chat MCP message count management
+```
+
+### 2. Security Considerations
+```
+Information Protection:
+- Exclusion of files containing sensitive information
+- Appropriate management of Chat MCP logs
+- Confidentiality level classification of deliverables
+- Precautions for external sharing
+```
+
+### 3. Operational Constraints
+```
+Limitations:
+- Network connection dependency
+- API rate limit impact
+- Local resource constraints
+- Stability during long execution
+```
+
+## Improvement Effects from Optimization
+
+### Expected Effects of Implemented Improvements
+```
+✅ Phased Agent Launch:
+- Execution time: 10-15% reduction
+- Resource efficiency: 20-30% improvement
+- System stability: Significant improvement
+
+✅ Adaptive Monitoring Intervals:
+- Communication load: 40-50% reduction
+- Monitoring efficiency: 25% improvement
+
+✅ Prompt Quality Standardization:
+- Deliverable quality: 15-20% improvement
+- Integration work efficiency: 30% improvement
+- Consistency: 85% improvement
+
+Overall Improvement Effects:
+- Execution time: 20-25% reduction
+- Cost efficiency: 15-20% improvement
+- Quality consistency: Significant improvement
+- System stability: Significant improvement
+```
+
+### Before and After Comparison
+```
+Traditional Version:
+- 7 agents launched simultaneously
+- Fixed 1-minute interval monitoring
+- Execution time: 20 minutes
+- Resource conflict risk: High
+
+Optimized Version:
+- Phased launch (2→4→1)
+- Adaptive monitoring (2→3→5 minutes)
+- Execution time: 15-17 minutes
+- Resource conflict risk: Low
+```
+
+## Summary
+
+This workflow is a comprehensive framework for efficiently executing complex investigation and analysis tasks with multiple AI agents. Through adaptive design, guaranteed continuous execution, and high-quality integration, it can create deliverables of scale and quality that would be difficult with traditional manual investigation in a short time.
+
+**Optimized Core Values**: 
+- Reduced human cognitive load (through phased management)
+- Standardization and improvement of investigation quality (quality metrics introduction)
+- Significant reduction in work time (20-25% efficiency improvement)
+- Accumulation of reusable knowledge
+- Improved system stability (resource conflict avoidance)
+
+By utilizing this workflow, you can achieve enhanced understanding of complex systems and projects, decision support, and quality improvement.

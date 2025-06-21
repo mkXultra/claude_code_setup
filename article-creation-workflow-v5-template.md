@@ -92,20 +92,7 @@ decision_framework:
 
 ## エラーハンドリング機構（拡張版）
 
-### ログ管理システム
-- `agents.json`: エージェントのPID、session_id、状態を記録
-- `errors.json`: エラー情報と復旧アクションを記録
-- `workflow-state.json`: ワークフロー全体の状態を管理
-- `coordinator-decisions.log`: コーディネーターの判断履歴
-
-### 適応的リカバリープロトコル
-1. リアルタイムヘルスチェック（間隔は動的調整）
-2. エラーパターン学習と予防的対処
-3. 戦略的な代替アプローチの自動選択
-
-### レビューフィードバック管理
-- `improvement-suggestions.json`: 修正指示の構造化データ
-- 優先順位付けと影響度評価を追加
+**注意**: ログ管理システムとエラーリカバリープロトコルの詳細は `../workflow-log-spec.md` を参照してください。
 
 ## Phase 0: 戦略的分析と環境準備
 
@@ -126,8 +113,7 @@ mcp__ccm__claude_code [
   1. prompts/内の全ワークフローMDファイルを読み込み
   2. {{DOMAIN_SPECIFIC_TOOLS}}の内容を理解
   3. 記事に必要な要素を整理（{{WORD_COUNT_RANGE}}に収まる内容）
-  4. workflow-log-spec.mdに従ってログシステムを初期化
-  5. 複雑度評価結果に基づく戦略を策定
+  4. 複雑度評価結果に基づく戦略を策定
   完了後'ARTICLE_BASE_READY'と報告してセッションIDを提供"
 ]
 ```
@@ -143,6 +129,10 @@ Room名: article-{{ARTICLE_TYPE}}-workflow-v5
 ### 0.4 自律型コーディネーター起動
 ```yaml
 コーディネーター責務（拡張版）:
+  初期化:
+    - ../workflow-log-spec.mdのプロトコルに準拠してログシステムを初期化
+    - 全エージェントの状態を一元管理
+  
   基本責務:
     - レビュー結果の監視
     - 修正指示の配布
@@ -155,9 +145,8 @@ Room名: article-{{ARTICLE_TYPE}}-workflow-v5
     - リソース最適化
     - 自律的問題解決
   
-  判断ログ:
-    - 全ての重要な判断をcoordinator-decisions.logに記録
-    - 判断理由と期待効果を明記
+  ログ管理:
+    - workflow-log-spec.mdのプロトコルに準拠
 ```
 
 ## Phase 1: ゴール判定と計画（適応的）
@@ -183,7 +172,6 @@ mcp__ccm__claude_code [
   - 追加調査が必要な場合は提案
   - 代替アプローチの提示
   
-  agents.jsonにあなたの情報を記録し、
   Chat MCPルーム'article-{{ARTICLE_TYPE}}-workflow-v5'で報告"
 ]
 ```
@@ -201,7 +189,6 @@ mcp__ccm__claude_code [
 - key-points.md (押さえるべき{{DOMAIN}}ポイント)
 【自律的協調】
 - 複雑な{{DOMAIN}}要素発見時は追加リサーチャーを要請
-【ログ】agents.jsonに自身の情報を記録
 ```
 
 #### Agent B: メインライティング担当（Sonnet）
@@ -216,7 +203,6 @@ mcp__ccm__claude_code [
 【自律的協調】
 - {{DOMAIN}}的疑問はAgent Aに確認
 - 文字数超過時は自動的に要約
-【ログ】agents.jsonに自身の情報を記録
 ```
 
 #### Agent C: 実装例・コード担当（Sonnet）
@@ -229,7 +215,6 @@ mcp__ccm__claude_code [
 【禁止事項】{{PROHIBITED_ACTIONS}}
 【自律的協調】
 - 動作確認が必要な場合はテストエージェントを要請
-【ログ】agents.jsonに自身の情報を記録
 ```
 
 ### 動的追加可能エージェント
@@ -266,7 +251,6 @@ mcp__ccm__claude_code [
 【Chat MCP通知】
 - レビュー結果を'article-{{ARTICLE_TYPE}}-workflow-v5'ルームに投稿
 - FAILの場合は修正箇所を明確に指示
-【ログ】agents.jsonに自身の情報を記録
 ```
 
 ### Agent F: ファクトチェック専門担当（Sonnet）
@@ -287,7 +271,6 @@ mcp__ccm__claude_code [
 - factual-errors.json（事実誤認リスト）
 【Chat MCP通知】
 - 事実誤認を発見した場合は即座に報告
-【ログ】agents.jsonに自身の情報を記録
 ```
 
 ### レビュー戦略の動的決定
@@ -341,9 +324,7 @@ review_strategy:
 - 統合時の優先順位付け
 - 必要に応じた内容の取捨選択
 【成果物】
-- {{FINAL_ARTICLE_FILENAME}}.md（{{WORD_COUNT_RANGE}}）
-【ログ】workflow-state.jsonを完了状態に更新
-```
+- {{FINAL_ARTICLE_FILENAME}}.md（{{WORD_COUNT_RANGE}}）```
 
 ## 実行タイムライン（適応的）
 

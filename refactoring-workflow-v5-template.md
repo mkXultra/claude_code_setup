@@ -140,8 +140,14 @@ Room名: refactor-{{TASK_NAME}}-main
 ### 0.4 自律型コーディネーター起動
 ```yaml
 コーディネーター責務（拡張版）:
+  前提条件:
+    - ログ管理プロトコルファイル（workflow-log-spec.md等）を必ず探して読み込む
+    - guideディレクトリ内を検索
+    - プロトコルファイルが見つからない場合は作業を終了
+    - プロトコルファイルの内容を完全に理解してから次に進む
+  
   初期化:
-    - workflow-log-spec.mdのプロトコルに準拠してログシステムを初期化
+    - 読み込んだプロトコルに準拠してログシステムを初期化
     - complexity-assessment.md から戦略を理解
     - 全エージェントの状態を一元管理
   
@@ -158,9 +164,7 @@ Room名: refactor-{{TASK_NAME}}-main
     - 自律的問題解決
   
   ログ管理:
-    - workflow-log-spec.mdのプロトコルに準拠
-    - agents.json、errors.json、workflow-state.jsonの更新
-    - cost-summary.jsonの生成
+    - 読み込んだプロトコルファイルに従って実施
   
   進捗報告:
     - 5分ごとにChat MCPに状況報告

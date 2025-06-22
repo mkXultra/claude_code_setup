@@ -6,6 +6,17 @@ v5テンプレート（refactoring-workflow-v5-template.md）を使用して、�
 
 **対象読者**: Claude Codeが参照して、リファクタリング要求に対応するためのガイドです。
 
+## 重要な注意事項
+**このワークフローでは、Claude Codeは直接リファクタリング作業を行いません。**
+代わりに、以下の手順でコーディネーターエージェントを起動し、全ての作業をコーディネーターに委任します：
+
+1. 要件ドキュメントを作成
+2. Git worktreeで独立した作業環境を準備
+3. mcp__ccm__claude_codeツールでコーディネーターエージェントを起動
+4. コーディネーターが自律的にリファクタリングを完了するまで監視
+
+**Claude Codeの役割は、環境準備とコーディネーター起動のみです。**
+
 ## 実行フロー
 
 ### 1. ユーザー要求の受付
@@ -87,28 +98,23 @@ Claude Codeは対話的に情報を収集し、自然言語形式で要件をま
    → [ユーザー回答を待つ]
 ```
 
-### 4. 環境準備と確認
+### 4. 要件の確認とコーディネーター起動
 
 ```markdown
-## 確認事項
+## 確認
+以下の要件でリファクタリングを実行します：
 
-### Git Worktreeの準備
-現在のブランチ状態を確認し、安全な作業環境を準備します：
-- 独立したworktreeで作業
-- メインブランチへの影響なし
-- 問題時は簡単に破棄可能
+[要件ドキュメントの内容を表示]
 
-### 実行環境
-- TypeScriptコンパイラの確認
-- テストランナーの確認
-- Lintツールの確認
-- その他必要なツールの確認
-
-準備ができたら、リファクタリングを開始します。
 よろしいですか？
+
+## Claude Codeの実行
+ユーザーの確認が取れたら、Claude Codeが直接コーディネーターエージェントを起動します。
 ```
 
 ### 5. Claude Codeによるコーディネーター起動
+
+**重要**: 以下の処理はClaude Codeが実行しますが、実際のリファクタリング作業はすべてコーディネーターエージェントが行います。
 
 Claude Codeが実行する処理：
 
@@ -131,6 +137,12 @@ os.symlink(
     os.path.join(work_dir, "node_modules")
 )
 
+# guideディレクトリのシンボリックリンク
+os.symlink(
+    os.path.abspath("guide"),
+    os.path.join(work_dir, "guide")
+)
+
 # 2. 要件ドキュメントの保存
 requirements_path = os.path.join(work_dir, "refactoring-requirements.md")
 with open(requirements_path, "w") as f:
@@ -140,17 +152,30 @@ with open(requirements_path, "w") as f:
 coordinator_prompt = f"""
 # v5 自律型リファクタリングコーディネーター
 
+## 作業ディレクトリ
+現在のディレクトリ（{work_dir}）で作業を実行してください。
+このディレクトリに存在するコードを対象にリファクタリングを行います。
+
+## 重要な前提条件
+- ログ管理プロトコルファイルが必ず存在すること
+- 存在しない場合は作業を開始しないこと
+
 ## 初期タスク
 1. refactoring-requirements.md を読み込んで要件を理解
-2. ../refactoring-workflow-v5-template.md を読み込んでテンプレートを理解
-3. 要件に基づいて、テンプレートのプレースホルダーを具体的な内容に置き換え
-4. 要件に基づいて初期複雑度評価（1-10）を実施
+2. guide/refactoring-workflow-v5-template.md を読み込んでテンプレートを理解
+3. ログ管理プロトコルファイル（workflow-log-spec.md等）を探して必ず読み込む
+   - guideディレクトリ内を検索
+   - 見つからない場合は作業を中断してエラーを報告
+4. プロトコルファイルの指示に従ってログ管理を実施
+5. 要件に基づいて、テンプレートのプレースホルダーを具体的な内容に置き換え
+6. 要件に基づいて初期複雑度評価（1-10）を実施
 
 ## リファクタリング要件
 {requirements_doc}
 
 ## 実行指示
 上記の要件に従って、v5自律型ワークフローを実行してください。
+すべてのエージェントは現在の作業ディレクトリ（{work_dir}）で起動してください。
 
 ### 動的判断の考慮事項
 - 影響範囲が5ファイル以上の場合は追加エージェントを検討
@@ -172,7 +197,7 @@ coordinator_prompt = f"""
 os.chdir(work_dir)
 mcp__ccm__claude_code(
     model="opus",
-    workFolder=".",
+    workFolder=work_dir,  # 明示的に作業ディレクトリを指定
     prompt=coordinator_prompt
 )
 ```

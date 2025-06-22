@@ -84,25 +84,38 @@ Claude Codeは対話的に情報を収集し、自然言語形式で要件をま
 
 ### 5. Claude Codeによるコーディネーター起動
 
+**シンプルな設計方針**: 
+- すべてのエージェントは同じディレクトリで動作
+- 記事は`articles/`ディレクトリに保存
+- ファイル名に日付とトピックを含めて識別しやすくする
+
 Claude Codeが実行する処理：
 
 ```python
-# 1. ワークスペースの作成
-timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-work_dir = f"article-workspace-{timestamp}"
-os.makedirs(work_dir)
+# 1. 記事ディレクトリの確認（なければ作成）
+if not os.path.exists("articles"):
+    os.makedirs("articles")
 
-# 2. 要件ドキュメントの保存
-with open(f"{work_dir}/article-requirements.md", "w") as f:
+# 2. 記事のベース名を決定
+timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+article_topic = "claude-code-comparison"  # トピックから生成
+article_basename = f"article-{timestamp}-{article_topic}"
+
+# 3. 要件ドキュメントの保存
+with open(f"articles/{article_basename}-requirements.md", "w") as f:
     f.write(requirements_doc)
 
-# 3. コーディネータープロンプトの作成
+# 4. コーディネータープロンプトの作成
 coordinator_prompt = f"""
 # v5 自律型記事作成コーディネーター
 
+## 記事情報
+- 記事ベース名: {article_basename}
+- 保存先: articles/ディレクトリ
+
 ## 初期タスク
-1. article-requirements.md を読み込んで要件を理解
-2. ../article-creation-workflow-v5-template.md を読み込んでテンプレートを理解
+1. articles/{article_basename}-requirements.md を読み込んで要件を理解
+2. ./article-creation-workflow-v5-template.md を読み込んでテンプレートを理解
 3. 要件に基づいて、テンプレートのプレースホルダーを具体的な内容に置き換え
 4. 要件に基づいて初期複雑度評価（1-10）を実施
 
@@ -111,6 +124,7 @@ coordinator_prompt = f"""
 
 ## 実行指示
 上記の要件に従って、v5自律型ワークフローを実行してください。
+すべての成果物は articles/ ディレクトリに {article_basename}-* の形式で保存してください。
 
 ### 動的判断の考慮事項
 - 外部APIやツールの記述がある場合はAgent F（ファクトチェック）を起動
@@ -120,10 +134,10 @@ coordinator_prompt = f"""
 開始してください。
 """
 
-# 4. コーディネーターエージェントの起動
+# 5. コーディネーターエージェントの起動
 mcp__ccm__claude_code(
     model="opus",
-    workFolder=work_dir,
+    workFolder=".",  # 現在のディレクトリで全エージェントが動作
     prompt=coordinator_prompt
 )
 ```

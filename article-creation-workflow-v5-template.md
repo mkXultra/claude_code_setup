@@ -9,6 +9,11 @@
 2. `{{PLACEHOLDER}}` で示された部分を具体的な内容に置き換え
 3. 記事タイプに応じた特別な要件を追加
 
+## 記事の保存規則
+- すべての成果物は `articles/` ディレクトリに保存
+- ファイル名は `{記事ベース名}-{ファイルタイプ}.md` の形式
+- 記事ベース名は実行時に指定（例: `article-20250622-claude-code-comparison`）
+
 ## 自律型コーディネーターの権限
 
 ### 1. 動的エージェント管理
@@ -92,7 +97,8 @@ decision_framework:
 
 ## エラーハンドリング機構（拡張版）
 
-**注意**: ログ管理システムとエラーリカバリープロトコルの詳細は `../workflow-log-spec.md` を参照してください。
+**注意**: ログ管理システムとエラーリカバリープロトコルの詳細は `workflow-log-spec.md` を参照してください。
+（コーディネーターエージェントを起動する際は、適切なパスを指定してください）
 
 ## Phase 0: 戦略的分析と環境準備
 
@@ -120,7 +126,7 @@ mcp__ccm__claude_code [
 
 ### 0.3 Chat MCPルーム作成（拡張）
 ```bash
-Room名: article-{{ARTICLE_TYPE}}-workflow-v5
+Room名: {{ARTICLE_BASENAME}}-chat
 追加Room（必要に応じて）:
 - article-debug-room（デバッグ用）
 - article-coordination-room（コーディネーター専用）
@@ -130,7 +136,8 @@ Room名: article-{{ARTICLE_TYPE}}-workflow-v5
 ```yaml
 コーディネーター責務（拡張版）:
   初期化:
-    - ../workflow-log-spec.mdのプロトコルに準拠してログシステムを初期化
+    - workflow-log-spec.mdのプロトコルに準拠してログシステムを初期化
+      （実行環境に応じて適切なパスで参照）
     - 全エージェントの状態を一元管理
   
   基本責務:
@@ -172,7 +179,7 @@ mcp__ccm__claude_code [
   - 追加調査が必要な場合は提案
   - 代替アプローチの提示
   
-  Chat MCPルーム'article-{{ARTICLE_TYPE}}-workflow-v5'で報告"
+  Chat MCPルーム'{{ARTICLE_BASENAME}}-chat'で報告"
 ]
 ```
 
@@ -185,8 +192,8 @@ mcp__ccm__claude_code [
 【基盤セッション継承】
 【ゴール貢献】{{TARGET_AUDIENCE}}向けの実用的な記事構成を設計
 【成果物】
-- article-outline.md (記事の構成案)
-- key-points.md (押さえるべき{{DOMAIN}}ポイント)
+- articles/{{ARTICLE_BASENAME}}-outline.md (記事の構成案)
+- articles/{{ARTICLE_BASENAME}}-key-points.md (押さえるべき{{DOMAIN}}ポイント)
 【自律的協調】
 - 複雑な{{DOMAIN}}要素発見時は追加リサーチャーを要請
 ```
@@ -196,7 +203,7 @@ mcp__ccm__claude_code [
 【基盤セッション継承】
 【ゴール貢献】{{TARGET_AUDIENCE}}向けの{{CONTENT_STYLE}}記事を執筆
 【成果物】
-- {{ARTICLE_FILENAME}}-draft.md（{{DRAFT_WORD_COUNT}}）
+- articles/{{ARTICLE_BASENAME}}-draft.md（{{DRAFT_WORD_COUNT}}）
 【注意事項】
 - {{SPECIFIC_WRITING_GUIDELINES}}
 - 全体の文字数制限を意識した簡潔な説明
@@ -210,8 +217,8 @@ mcp__ccm__claude_code [
 【基盤セッション継承】
 【ゴール貢献】実際の{{EXAMPLE_TYPE}}を提供
 【成果物】
-- {{EXAMPLE_FILENAME_1}}.md ({{EXAMPLE_DESCRIPTION_1}}、{{EXAMPLE_WORD_COUNT_1}})
-- {{EXAMPLE_FILENAME_2}}.md ({{EXAMPLE_DESCRIPTION_2}}、{{EXAMPLE_WORD_COUNT_2}})
+- articles/{{ARTICLE_BASENAME}}-{{EXAMPLE_TYPE_1}}.md ({{EXAMPLE_DESCRIPTION_1}}、{{EXAMPLE_WORD_COUNT_1}})
+- articles/{{ARTICLE_BASENAME}}-{{EXAMPLE_TYPE_2}}.md ({{EXAMPLE_DESCRIPTION_2}}、{{EXAMPLE_WORD_COUNT_2}})
 【禁止事項】{{PROHIBITED_ACTIONS}}
 【自律的協調】
 - 動作確認が必要な場合はテストエージェントを要請
@@ -223,14 +230,14 @@ mcp__ccm__claude_code [
 ```
 【トリガー】複雑な{{DOMAIN}}要素の発見時
 【専門性】特定{{DOMAIN}}領域の深掘り調査
-【成果物】{{DOMAIN}}-deep-dive.md
+【成果物】articles/{{ARTICLE_BASENAME}}-{{DOMAIN}}-deep-dive.md
 ```
 
 #### Agent H: パフォーマンス最適化（Sonnet）
 ```
 【トリガー】文字数制限への対応必要時
 【専門性】コンテンツの要約と最適化
-【成果物】optimized-content.md
+【成果物】articles/{{ARTICLE_BASENAME}}-optimized.md
 ```
 
 ## Phase 2.5: 適応的レビューサイクル
@@ -246,10 +253,10 @@ mcp__ccm__claude_code [
 - 不要な{{AVOID_ELEMENTS}}の排除確認
 - 文字数が指定範囲内か確認
 【成果物】
-- review-report.md（レビュー結果：PASS/FAIL）
-- improvement-suggestions.json（修正が必要な場合の具体的指示）
+- articles/{{ARTICLE_BASENAME}}-review-report.md（レビュー結果：PASS/FAIL）
+- articles/{{ARTICLE_BASENAME}}-improvements.json（修正が必要な場合の具体的指示）
 【Chat MCP通知】
-- レビュー結果を'article-{{ARTICLE_TYPE}}-workflow-v5'ルームに投稿
+- レビュー結果を'{{ARTICLE_BASENAME}}-chat'ルームに投稿
 - FAILの場合は修正箇所を明確に指示
 ```
 
@@ -267,8 +274,8 @@ mcp__ccm__claude_code [
 - 実際のコマンド実行テスト
 - WebSearchツールでの確認
 【成果物】
-- fact-check-report.md（検証結果）
-- factual-errors.json（事実誤認リスト）
+- articles/{{ARTICLE_BASENAME}}-fact-check.md（検証結果）
+- articles/{{ARTICLE_BASENAME}}-fact-errors.json（事実誤認リスト）
 【Chat MCP通知】
 - 事実誤認を発見した場合は即座に報告
 ```
@@ -324,7 +331,8 @@ review_strategy:
 - 統合時の優先順位付け
 - 必要に応じた内容の取捨選択
 【成果物】
-- {{FINAL_ARTICLE_FILENAME}}.md（{{WORD_COUNT_RANGE}}）```
+- articles/{{ARTICLE_BASENAME}}-final.md（{{WORD_COUNT_RANGE}}）
+```
 
 ## 実行タイムライン（適応的）
 

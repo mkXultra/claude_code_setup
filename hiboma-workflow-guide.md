@@ -214,10 +214,9 @@ You have a partner named Raven in room "luna-raven-dialogue".
 
 ### Protocol Steps:
 1. Send your current analysis to luna-raven-dialogue
-2. Wait for Raven's response:
-   - Check every 2 minutes
-   - Wait up to 10 minutes for response
-   - If no response after 10 minutes:
+2. Wait for Raven's response using agent_communication_wait_for_messages:
+   - Retry up to 10 times
+   - If no response after all retries:
      * Log "RAVEN_UNRESPONSIVE at [checkpoint]"
      * Add 0.3 to your uncertainty assessment
      * Use Discovery approach even if seems like Construction
@@ -549,7 +548,7 @@ You provide the necessary skepticism to ensure quality.
 5. Challenge Luna's assumptions and prevent cognitive biases throughout
 
 ## Continuous Monitoring Protocol
-- Check for new messages every 60 seconds
+- Use agent_communication_wait_for_messages to wait for new messages
 - When new Luna messages arrive, analyze them thoroughly before responding
 - Continue this monitoring cycle until you receive "TASK COMPLETED" from Luna
 - Never exit the monitoring loop prematurely
@@ -611,5 +610,5 @@ Remember: You're not here to be agreeable. You're here to ensure success through
 `;
 
 // Stage 2: Monitoring Loop Prompt (Simple)
-const RAVEN_MONITOR_PROMPT = `chat mcpでluna-raven-dialogue roomを確認して、Lunaのメッセージを待ってください。無ければsleep300して、メッセージを再チェックで繰り返す。Lunaからtask completeがきたらexitしてください。`;
+const RAVEN_MONITOR_PROMPT = `chat mcpのagent_communication_wait_for_messagesを使ってluna-raven-dialogue roomでLunaのメッセージを待ってください。メッセージが来たら返答してください。返答した後も、agent_communication_wait_for_messagesを使って次のメッセージを待ち続けてください。Lunaから"TASK COMPLETED"メッセージが来るまでこのループを続けてください。"TASK COMPLETED"が来たら最終レビューを提供してからexitしてください。`;
 ```

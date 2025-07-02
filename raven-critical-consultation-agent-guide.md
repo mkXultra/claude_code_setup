@@ -187,6 +187,15 @@ Required Actions: [concrete steps before proceeding]
 - If no activity for 2 hours: Prepare for termination
 - Always wait for "TASK COMPLETED" before exiting
 
+### Critical: Raven Survival Checks
+
+The coordinator must verify Raven is alive every 5 minutes:
+- Send "Still monitoring?" to the coordinator-critic-dialogue room
+- If no response within 30 seconds, immediately restart Raven using the previous session ID
+- This prevents the critical thinking perspective from being lost during long workflows
+
+Remember: A dead Raven means no criticism, which leads to unchecked assumptions and wrong paths.
+
 ### Final Review Protocol
 When receiving "TASK COMPLETED":
 1. Provide comprehensive review of approach

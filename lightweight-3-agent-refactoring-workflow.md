@@ -66,20 +66,30 @@ mcp__chat__agent_communication_create_room --roomName "[task-name]-progress"
 
 #### Git Worktree作成
 ```bash
-# 現在のブランチから新しいworktreeを作成
-git worktree add ../[project-name]-[task-name]
+# 重要: 現在のブランチの内容で新しいworktreeを作成（ブランチ名は指定しない）
+TASK_NAME="ability-store-refactor"  # 例: タスク名を設定
+WORK_DIR="../front-${TASK_NAME}"    # 例: ../front-ability-store-refactor
 
-# 環境ファイルをコピー
-cp .env.local ../[project-name]-[task-name]/
+# 正しい例（引数は2つのみ - パスのみ指定）
+git worktree add $WORK_DIR
+
+# ❌ 間違った例（第3引数でブランチ名を指定してはいけない）
+# git worktree add $WORK_DIR feat/role_update
+# git worktree add $WORK_DIR main
+
+# 必要なファイルをコピー
+cp .env.local $WORK_DIR/
+cp -r .husky $WORK_DIR/
 
 # node_modulesをシンボリックリンク（高速化）
-ln -s $(pwd)/node_modules ../[project-name]-[task-name]/node_modules
+ln -s $(pwd)/node_modules $WORK_DIR/node_modules
 ```
 
 **注意事項**:
 - ブランチ作成は不要（現在のブランチを使用）
+- **第3引数（ブランチ名）は絶対に指定しない**
 - `npm install`は不要（シンボリックリンクで対応）
-- 作業完了後は`git worktree remove`で削除
+- 作業完了後は`git worktree remove $WORK_DIR`で削除
 
 ### Phase 1: 調査エージェント（Opus）
 
@@ -88,9 +98,12 @@ ln -s $(pwd)/node_modules ../[project-name]-[task-name]/node_modules
 **成果物**: `investigation-report.md`
 **実行時間**: 5-10分
 
-**プロンプトテンプレート**:
-```
-[タスク名]の影響調査タスク：
+**実行例**:
+```bash
+mcp__ccm__claude_code [
+  workFolder: $WORK_DIR,
+  model: "opus",
+  prompt: "[タスク名]の影響調査タスク：
 
 Chat MCPルーム '[task-name]-progress' に参加し、5分ごとに進捗を報告してください。
 報告例: [PROGRESS] TypeScript型チェック実行中... [FINDING] as anyを2箇所発見
@@ -104,7 +117,8 @@ Chat MCPルーム '[task-name]-progress' に参加し、5分ごとに進捗を�
 調査結果を investigation-report.md に出力
 
 完了後、セッションIDを提供してください。
-このセッションが実装・レビューの基盤となります。
+このセッションが実装・レビューの基盤となります。"
+]
 ```
 
 ### Phase 2: 実装エージェント（Sonnet）
@@ -114,9 +128,13 @@ Chat MCPルーム '[task-name]-progress' に参加し、5分ごとに進捗を�
 **成果物**: `implementation-summary.md`
 **実行時間**: 5-10分
 
-**プロンプトテンプレート**:
-```
-[タスク名]の実装タスク：
+**実行例**:
+```bash
+mcp__ccm__claude_code [
+  workFolder: $WORK_DIR,
+  model: "sonnet",
+  session_id: [session-id],
+  prompt: "[タスク名]の実装タスク：
 
 Chat MCPルーム '[task-name]-progress' に参加し、5分ごとに進捗を報告してください。
 報告例: [PROGRESS] テスト実行中（32/74完了）... [STATUS] lint実行中
@@ -132,7 +150,8 @@ investigation-report.mdの調査結果に基づいて：
 4. npm run testで既存テストが通ることを確認
 5. npm run lintでコード品質チェック
 
-実装内容を implementation-summary.md に記録
+実装内容を implementation-summary.md に記録"
+]
 ```
 
 ### Phase 3: レビューエージェント（Opus）
@@ -142,9 +161,13 @@ investigation-report.mdの調査結果に基づいて：
 **成果物**: `review-report.md`
 **実行時間**: 3-5分
 
-**プロンプトテンプレート**:
-```
-コードレビューと品質保証：
+**実行例**:
+```bash
+mcp__ccm__claude_code [
+  workFolder: $WORK_DIR,
+  model: "opus",
+  session_id: [session-id],
+  prompt: "コードレビューと品質保証：
 
 Chat MCPルーム '[task-name]-progress' に参加し、レビュー進捗を報告してください。
 
@@ -162,7 +185,8 @@ Chat MCPルーム '[task-name]-progress' に参加し、レビュー進捗を報
 5. 他の改善提案
 
 レビュー結果を review-report.md に出力
-問題がなければ 'APPROVED' を明記
+問題がなければ 'APPROVED' を明記"
+]
 ```
 
 ## 待機戦略

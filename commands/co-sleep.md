@@ -1,9 +1,8 @@
 ---
 allowed_tools: Bash(git:*)
-description: "待機戦略に基づいてsleepする"
+description: "Execute sleep based on wait strategy"
 ---
  
 
-guide/coordinator-wait-strategies.md or ./coordinator-wait-strategies.md  に基づいてsleepコマンドを実行して、待機してください。
-
+Execute sleep command based on the wait strategies defined in guide/coordinator-wait-strategies.md or ./coordinator-wait-strategies.md.
 

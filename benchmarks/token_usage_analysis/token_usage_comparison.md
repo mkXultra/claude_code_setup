@@ -1,89 +1,89 @@
-# Claude Code モデル別トークン使用量比較結果
+# Claude Code Model Token Usage Comparison Results
 
-## 実験概要
-同一のプロンプトを使用して、Opus、Sonnet、Haikuの3つのモデルでClaude Codeを実行し、トークン使用量とコストを比較しました。
+## Experiment Overview
+We executed Claude Code with the same prompt using three models (Opus, Sonnet, and Haiku) to compare token usage and costs.
 
-### 使用したプロンプト
+### Prompt Used
 ```
-あなたは優秀なプログラマーです。以下のタスクを実行してください：
+You are an excellent programmer. Please perform the following tasks:
 
-1. Pythonで簡単なフィボナッチ数列を計算する関数を実装してください
-2. その関数のユニットテストを書いてください
-3. 実装の効率性について説明してください
+1. Implement a simple Fibonacci sequence calculation function in Python
+2. Write unit tests for that function
+3. Explain the efficiency of the implementation
 
-この実装では、以下の要件を満たしてください：
-- 関数名は `fibonacci` とする
-- n番目のフィボナッチ数を返す（0番目は0、1番目は1）
-- 負の数が入力された場合は ValueError を発生させる
-- メモ化を使用して効率的に実装する
+The implementation should meet the following requirements:
+- Function name should be `fibonacci`
+- Return the nth Fibonacci number (0th is 0, 1st is 1)
+- Raise ValueError for negative input
+- Use memoization for efficient implementation
 ```
 
-## 実験結果
+## Experiment Results
 
-### トークン使用量比較
+### Token Usage Comparison
 
-| モデル | 入力トークン | キャッシュ作成 | キャッシュ読取 | 出力トークン | 総コスト |
-|--------|-------------|---------------|---------------|-------------|----------|
+| Model | Input Tokens | Cache Creation | Cache Read | Output Tokens | Total Cost |
+|-------|--------------|----------------|------------|---------------|------------|
 | **Opus** | 76 | 6,491 | 181,898 | 2,445 | **$0.582** |
 | **Sonnet** | 76 | 19,605 | 176,531 | 3,328 | **$0.179** |
 | **Haiku** | 34 | 17,269 | 81,647 | 1,354 | **$0.029** |
 
-### パフォーマンス比較
+### Performance Comparison
 
-| モデル | 実行時間 | 実行結果 | ターン数 |
-|--------|----------|----------|----------|
-| **Opus** | 76秒 | 成功 | 26 |
-| **Sonnet** | 86秒 | 成功 | 24 |
-| **Haiku** | 27秒 | 成功 | 16 |
+| Model | Execution Time | Result | Number of Turns |
+|-------|----------------|--------|-----------------|
+| **Opus** | 76 seconds | Success | 26 |
+| **Sonnet** | 86 seconds | Success | 24 |
+| **Haiku** | 27 seconds | Success | 16 |
 
-## 分析結果
+## Analysis Results
 
-### 1. コスト効率
-- **最も安い**: Haiku ($0.029)
-- **中間**: Sonnet ($0.179) - Haikuの約6倍
-- **最も高い**: Opus ($0.582) - Haikuの約20倍
+### 1. Cost Efficiency
+- **Cheapest**: Haiku ($0.029)
+- **Middle**: Sonnet ($0.179) - About 6x Haiku
+- **Most Expensive**: Opus ($0.582) - About 20x Haiku
 
-### 2. 処理速度
-- **最速**: Haiku (27秒)
-- **中間**: Opus (76秒)
-- **最遅**: Sonnet (86秒)
+### 2. Processing Speed
+- **Fastest**: Haiku (27 seconds)
+- **Middle**: Opus (76 seconds)
+- **Slowest**: Sonnet (86 seconds)
 
-### 3. 出力の詳細度
-- **Sonnet**: 3,328トークン（最も詳細）
-- **Opus**: 2,445トークン
-- **Haiku**: 1,354トークン（最もコンパクト）
+### 3. Output Detail Level
+- **Sonnet**: 3,328 tokens (most detailed)
+- **Opus**: 2,445 tokens
+- **Haiku**: 1,354 tokens (most compact)
 
-### 4. ターン数（対話回数）
-- **Opus**: 26ターン（最多）
-- **Sonnet**: 24ターン
-- **Haiku**: 16ターン（最少）
+### 4. Number of Turns (Interactions)
+- **Opus**: 26 turns (most)
+- **Sonnet**: 24 turns
+- **Haiku**: 16 turns (least)
 
-### 5. 特筆事項
-- Haikuの入力トークン数が他の2モデルより少ない（34 vs 76）
-  - モデル間でトークナイザーやシステムプロンプトが異なる可能性
-- すべてのモデルが正常にタスクを完了
-- Opusは最も多くのターン数を使用し、より慎重なアプローチを取っている
+### 5. Notable Points
+- Haiku's input token count is lower than the other two models (34 vs 76)
+  - Possible differences in tokenizer or system prompts between models
+- All models successfully completed the task
+- Opus used the most turns, taking a more careful approach
 
-## 結論
+## Conclusion
 
-### モデル選択の指針
+### Model Selection Guidelines
 
-1. **コスト重視の場合**: Haiku
-   - 最も安価（$0.029）
-   - 最速（27秒）
-   - シンプルなタスクに最適
+1. **Cost-focused**: Haiku
+   - Most affordable ($0.029)
+   - Fastest (27 seconds)
+   - Optimal for simple tasks
 
-2. **品質とコストのバランス**: Sonnet
-   - 中間的なコスト（$0.179）
-   - 最も詳細な出力
-   - プロダクション用途に推奨
+2. **Balance of Quality and Cost**: Sonnet
+   - Moderate cost ($0.179)
+   - Most detailed output
+   - Recommended for production use
 
-3. **最高品質・複雑なタスク**: Opus
-   - 最も高価（$0.582）
-   - 最も多いターン数で慎重に実装
-   - 複雑なシステム設計や研究用途に推奨
+3. **Highest Quality / Complex Tasks**: Opus
+   - Most expensive ($0.582)
+   - Most turns for careful implementation
+   - Recommended for complex system design or research
 
-### CCM MCPの利点
-- `get_claude_result`で各実行の詳細なコスト情報を取得可能
-- プロジェクトの予算に応じた適切なモデル選択が可能
-- 同じプロンプトでも異なるモデルの特性を比較検証できる
+### CCM MCP Advantages
+- Detailed cost information available via `get_claude_result`
+- Enables appropriate model selection based on project budget
+- Allows comparison of different model characteristics with the same prompt

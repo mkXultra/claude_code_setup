@@ -1,10 +1,8 @@
-
 ---
 allowed_tools: Bash(git:*)
-description: "git diff stagedからコミットメッセージを作成する"
+description: "Create commit message from git diff staged"
 ---
  
-git diff --stagedを確認してコミットメッセージを日本語で作成してください。
-git logを行いcommit msgの内容の傾向を確認して、コミットメッセージを作成してください。
-絶対にコミットはしないでください。コミットメッセージを提示してください。
-
+Check git diff --staged and create a commit message.
+Run git log to check the trend of commit message content, then create an appropriate commit message.
+Do NOT commit. Just present the commit message.

@@ -51,35 +51,77 @@ You should see `chat`, `ccm`, and `playwright` listed.
 
 ### 5. Use a workflow
 
-For bug fixing:
+**For workflows with Chat MCP (recommended for better performance):**
 ```
-@guide/multi-agent-bug-fix-workflow.md Please fix [bug description]
-```
+# Bug fixing with real-time coordination
+@guide/multi-agent-bug-fix-workflow-v2.md Please fix [bug description]
 
-For investigation:
-```
+# Feature implementation with TDD and chat
+@guide/multi-agent-feature-implementation-workflow-v2.md Please implement [feature]
+
+# Investigation with parallel agents
 @guide/multi-agent-investigation-workflow.md Please investigate [topic]
 ```
 
-## Workflows
+**For traditional workflows (file-based coordination):**
+```
+# Original bug fix workflow
+@guide/multi-agent-bug-fix-workflow.md Please fix [bug description]
 
-### Multi-Agent Bug Fix Workflow
+# Original TDD feature implementation
+@guide/multi-agent-feature-implementation-workflow.md Please implement [feature]
+```
 
-Specialized agents working together:
-1. **Investigation Agent** (Opus): Analyzes bug and proposes solutions
-2. **Implementation Agent** (Sonnet): Implements the fix
-3. **Review Agent** (Opus): Reviews code changes
-4. **Debug Agent** (Sonnet): Troubleshoots when errors occur
+## Available Workflows
 
-The agents automatically cycle through review-fix iterations until code quality standards are met.
+### Workflows with Chat MCP (Real-time Coordination)
 
-### Multi-Agent Investigation Workflow
+These workflows use chat rooms for agent communication, providing real-time coordination and reduced wait times:
 
-For complex system analysis:
-- Divides investigation into 4-6 specialized areas
-- Agents work in parallel on different aspects
-- Dynamic agent addition based on discoveries
-- Final integration by Opus model for high-quality reports
+#### 1. Multi-Agent Investigation Workflow
+- **Files**: `multi-agent-investigation-workflow.md` (English), `multi-agent-investigation-workflow_jp.md` (Japanese)
+- **Features**: Parallel investigation with 4-6 specialized agents, real-time progress updates
+- **Chat**: Agents report findings and coordinate through shared chat room
+
+#### 2. Multi-Agent Bug Fix Workflow v2
+- **File**: `multi-agent-bug-fix-workflow-v2.md` (English)
+- **Features**: Enhanced version with chat-based coordination
+- **Benefits**: 30-50% time reduction, dynamic issue resolution, real-time progress
+
+#### 3. Multi-Agent Feature Implementation Workflow v2 (TDD)
+- **File**: `multi-agent-feature-implementation-workflow-v2.md` (English)
+- **Features**: TDD cycles coordinated through chat
+- **Benefits**: 40-60% time reduction, event-driven Red-Green-Refactor cycles
+
+#### 4. Article Creation Workflow v5 MCP
+- **File**: `article-creation-workflow-v5-mcp.md`
+- **Features**: Multi-phase article creation with chat coordination
+
+#### 5. Lightweight 3-Agent Refactoring Workflow
+- **File**: `lightweight-3-agent-refactoring-workflow.md`
+- **Features**: Efficient refactoring with progress visualization
+
+#### 6. HIBOMA Workflow Guide
+- **File**: `hiboma-workflow-guide.md`
+- **Features**: Hierarchical coordination with Luna-Raven dialogue
+
+#### 7. Refactoring Workflow v5 Template
+- **File**: `refactoring-workflow-v5-template.md`
+- **Features**: Standardized refactoring with specialized chat rooms
+
+### Workflows without Chat MCP (File-based Coordination)
+
+These workflows use traditional file-based coordination and fixed wait times:
+
+#### 1. Multi-Agent Bug Fix Workflow (Original)
+- **Files**: `multi-agent-bug-fix-workflow.md` (English), `multi-agent-bug-fix-workflow_jp.md` (Japanese)
+- **Features**: Investigation → Implementation → Review → Debug cycle
+- **Coordination**: Through deliverable files and session management
+
+#### 2. Multi-Agent Feature Implementation Workflow (TDD Original)
+- **Files**: `multi-agent-feature-implementation-workflow.md` (English), `multi-agent-feature-implementation-workflow_jp.md` (Japanese)
+- **Features**: Test-Driven Development with Red-Green-Refactor cycles
+- **Coordination**: Through test files and implementation handoffs
 
 ## Example Results
 
@@ -106,14 +148,36 @@ The workflows use a "foundation session" strategy:
 ```
 Result: 90%+ token cost savings
 
-## Files in this Repository
+## Key Files in this Repository
 
+### Installation & Setup
 - `mcp_add.sh`: Installation script for MCP components
-- `multi-agent-bug-fix-workflow.md`: Bug fixing workflow (English)
-- `multi-agent-bug-fix-workflow_jp.md`: Bug fixing workflow (Japanese)
-- `multi-agent-investigation-workflow.md`: Investigation workflow (English)
-- `multi-agent-investigation-workflow_jp.md`: Investigation workflow (Japanese)
-- `multi-agent-feature-implementation-workflow.md`: Feature implementation workflow
+- `mcp_add_global.sh`: Global installation script
+- `install_claude_commands.sh`: Claude commands setup
+
+### Workflows with Chat MCP
+- `multi-agent-bug-fix-workflow-v2.md`: Enhanced bug fixing with chat (English)
+- `multi-agent-feature-implementation-workflow-v2.md`: Enhanced TDD implementation with chat (English)
+- `multi-agent-investigation-workflow.md`: Investigation workflow with chat (English)
+- `multi-agent-investigation-workflow_jp.md`: Investigation workflow with chat (Japanese)
+- `article-creation-workflow-v5-mcp.md`: Article creation with chat
+- `lightweight-3-agent-refactoring-workflow.md`: Lightweight refactoring with chat
+- `hiboma-workflow-guide.md`: HIBOMA framework with chat
+- `refactoring-workflow-v5-template.md`: Refactoring template with chat
+
+### Workflows without Chat MCP
+- `multi-agent-bug-fix-workflow.md`: Original bug fixing workflow (English)
+- `multi-agent-bug-fix-workflow_jp.md`: Original bug fixing workflow (Japanese)
+- `multi-agent-feature-implementation-workflow.md`: Original TDD workflow (English)
+- `multi-agent-feature-implementation-workflow_jp.md`: Original TDD workflow (Japanese)
+
+### Documentation & Guides
+- `CLAUDE.md`: Claude Code guidance for this repository
+- `chat-mcp-prompt-guide.md`: How to use Chat MCP effectively (English)
+- `chat-mcp-prompt-guide_jp.md`: How to use Chat MCP effectively (Japanese)
+- `claude-model-selector.md`: Model selection guidance
+- `workflow-log-spec.md`: Logging specifications
+- `coordinator-wait-strategies.md`: Coordination strategies
 
 ## Requirements
 

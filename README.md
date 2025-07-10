@@ -56,6 +56,9 @@ You should see `chat`, `ccm`, and `playwright` listed.
 # Bug fixing with real-time coordination
 @guide/multi-agent-bug-fix-workflow-v2.md Please fix [bug description]
 
+# Advanced bug fixing with confidence scoring (highest accuracy)
+@guide/multi-agent-bug-fix-workflow-v3.md Please fix [bug description]
+
 # Feature implementation with TDD and chat
 @guide/multi-agent-feature-implementation-workflow-v2.md Please implement [feature]
 
@@ -88,24 +91,30 @@ These workflows use chat rooms for agent communication, providing real-time coor
 - **Features**: Enhanced version with chat-based coordination
 - **Benefits**: 30-50% time reduction, dynamic issue resolution, real-time progress
 
-#### 3. Multi-Agent Feature Implementation Workflow v2 (TDD)
+#### 3. Multi-Agent Bug Fix Workflow v3 (Advanced)
+- **File**: `multi-agent-bug-fix-workflow-v3.md` (English)
+- **Features**: Replication-first approach with confidence scoring
+- **Benefits**: Bug verification, user approval checkpoints, pattern learning, 80%+ fix success rate
+- **Key Innovation**: Replicates bug before fixing, shows confidence levels, learns from history
+
+#### 4. Multi-Agent Feature Implementation Workflow v2 (TDD)
 - **File**: `multi-agent-feature-implementation-workflow-v2.md` (English)
 - **Features**: TDD cycles coordinated through chat
 - **Benefits**: 40-60% time reduction, event-driven Red-Green-Refactor cycles
 
-#### 4. Article Creation Workflow v5 MCP
+#### 5. Article Creation Workflow v5 MCP
 - **File**: `article-creation-workflow-v5-mcp.md`
 - **Features**: Multi-phase article creation with chat coordination
 
-#### 5. Lightweight 3-Agent Refactoring Workflow
+#### 6. Lightweight 3-Agent Refactoring Workflow
 - **File**: `lightweight-3-agent-refactoring-workflow.md`
 - **Features**: Efficient refactoring with progress visualization
 
-#### 6. HIBOMA Workflow Guide
+#### 7. HIBOMA Workflow Guide
 - **File**: `hiboma-workflow-guide.md`
 - **Features**: Hierarchical coordination with Luna-Raven dialogue
 
-#### 7. Refactoring Workflow v5 Template
+#### 8. Refactoring Workflow v5 Template
 - **File**: `refactoring-workflow-v5-template.md`
 - **Features**: Standardized refactoring with specialized chat rooms
 
@@ -157,6 +166,7 @@ Result: 90%+ token cost savings
 
 ### Workflows with Chat MCP
 - `multi-agent-bug-fix-workflow-v2.md`: Enhanced bug fixing with chat (English)
+- `multi-agent-bug-fix-workflow-v3.md`: Advanced bug fixing with replication & confidence (English)
 - `multi-agent-feature-implementation-workflow-v2.md`: Enhanced TDD implementation with chat (English)
 - `multi-agent-investigation-workflow.md`: Investigation workflow with chat (English)
 - `multi-agent-investigation-workflow_jp.md`: Investigation workflow with chat (Japanese)

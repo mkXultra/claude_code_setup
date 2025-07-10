@@ -16,6 +16,7 @@ This is a Multi-Agent AI Orchestration Framework that enables multiple Claude Co
 ### Enhanced Workflows Now Available
 1. **`multi-agent-bug-fix-workflow-v2.md`**: Bug fixing with chat coordination
 2. **`multi-agent-feature-implementation-workflow-v2.md`**: TDD with real-time Red-Green-Refactor cycles
+3. **`multi-agent-bug-fix-workflow-v3.md`**: Advanced bug fixing with replication-first approach and confidence scoring
 
 ### Bilingual Support
 All documentation now available in English and Japanese (files with `_jp` suffix)
@@ -63,6 +64,7 @@ python test_fibonacci.py
 3. **Workflow Patterns**
    - **Bug Fix**: Investigation → Implementation → Review → Fix cycles
    - **Bug Fix v2 (Chat)**: Real-time coordination, dynamic debugging, 30-50% faster
+   - **Bug Fix v3 (Advanced)**: Replication → Verification → Confidence scoring → User approval checkpoints
    - **Investigation**: Parallel multi-agent analysis → Integration
    - **Feature Implementation (TDD)**: Design → Red → Green → Refactor cycles
    - **Feature Implementation v2 (Chat)**: Event-driven TDD, 40-60% faster
@@ -84,6 +86,7 @@ python test_fibonacci.py
 #### Chat-Enhanced Workflows (Recommended)
 These workflows use real-time chat coordination for improved efficiency:
 - `multi-agent-bug-fix-workflow-v2.md` - Bug fixing with 30-50% time reduction
+- `multi-agent-bug-fix-workflow-v3.md` - Advanced bug fixing with replication, verification, and confidence scoring
 - `multi-agent-feature-implementation-workflow-v2.md` - TDD implementation with event-driven cycles
 - `multi-agent-investigation-workflow.md` - Parallel investigation with chat updates
 - `article-creation-workflow-v5-mcp.md` - Article creation with progress tracking

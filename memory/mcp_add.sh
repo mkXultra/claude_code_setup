@@ -1,8 +1,10 @@
+# Personal Knowledge
+claude mcp add personal-knowledge --transport sse http://localhost:8000/sse
+claude mcp add personal-search --transport sse http://localhost:8090/sse
 
-claude mcp add-json chat '{"name":" chat","command":"npx","args":["agent-communication-mcp"]}'
-claude mcp add-json ccm '{"name":"ccm","command":"npx","args":["@mkxultra/claude-code-mcp@latest"]}'
-claude mcp add graphiti --transport sse http://localhost:8000/sse
-claude mcp add n4query --transport sse http://localhost:8090/sse
+# Project Knowledge
+claude mcp add project-knowledge --transport sse http://localhost:8001/sse
+claude mcp add project-search --transport sse http://localhost:8091/sse
 
 
 

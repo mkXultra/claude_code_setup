@@ -1,5 +1,13 @@
 # 動的エージェントネットワーク
 
+⚠️ STOP - CHECK UNCERTAINTY FIRST ⚠️
+├─ ≥0.7 → Use 3 agents (CCM MCP)
+├─ ≥0.5 → Post uncertainty assessment to critic room
+└─ <0.5 → Proceed directly
+
+Never: grep, find, read directly
+Always: Use agents for investigation
+
 ## エージェントの種類とコスト
 - **Haiku**: コスト1 - 単純な検索や確認
 - **Sonnet**: コスト6 - 複雑な分析や実装
@@ -25,6 +33,8 @@
 Ravenの立ち上げ方法は「raven-critical-consultation-agent-guide.md」を参照。
 
 ## 実行パターン
+
+**⚠️ 重要: 以下の実行パターンに入る前に、必ずRavenと相談すること（意思決定の原則を参照）**
 
 ### 1. 探索フェーズ
 不確実性が0.7以上の場合：

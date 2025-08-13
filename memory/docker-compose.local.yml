@@ -39,7 +39,7 @@ services:
         condition: service_healthy
 
   graphiti-mcp:
-    image: zepai/knowledge-graph-mcp:latest
+    image: ghcr.io/mkxultra/graphiti-mcp-server-extended:latest
     build:
       context: .
       dockerfile: Dockerfile

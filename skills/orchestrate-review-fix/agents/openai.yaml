@@ -1,0 +1,4 @@
+interface:
+  display_name: "Orchestrate Review Fix"
+  short_description: "Coordinate three reviews and one fix agent"
+  default_prompt: "Use $orchestrate-review-fix to run three reviewer agents, resolve conflicts, and hand merged findings to a fixer."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Orchestrate Review Fix CLI"
+  short_description: "Coordinate three reviews and one fix via ai-cli"
+  default_prompt: "Use $orchestrate-review-fix-ai-cli to run three reviewer agents through ai-cli, resolve conflicts, and hand merged findings to a fixer."

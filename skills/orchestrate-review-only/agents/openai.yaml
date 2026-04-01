@@ -1,0 +1,4 @@
+interface:
+  display_name: "Orchestrate Review Only"
+  short_description: "Coordinate three parallel review agents and merge findings"
+  default_prompt: "Use $orchestrate-review-only to run three reviewer agents in parallel, merge findings, and resolve contradictions."

@@ -1,11 +1,11 @@
 ---
 name: orchestrate-review-only
-description: Orchestrate a 3-model parallel review workflow using mcp__acm__run and mcp__acm__wait. Runs codex-ultra, gemini-ultra, and claude-ultra reviews in parallel, enforces structured output, merges and deduplicates findings, resolves contradictions, and returns a final merged review report. No fixer agent is involved.
+description: Orchestrate a 3-slot parallel review workflow using mcp__acm__run and mcp__acm__wait. Runs codex, glm5.1, and claude review slots in parallel, with gemini-ultra as the glm5.1 fallback, enforces structured output, merges and deduplicates findings, resolves contradictions, and returns a final merged review report. No fixer agent is involved.
 ---
 
 # Orchestrate Review Only
 
-Run this skill as an operator. Accept the YAML input below, use only `mcp__acm__run` and `mcp__acm__wait`, do not read files, and do not use any other tools.
+Run this skill as an operator. Accept the YAML input below, use only `mcp__acm__run` and `mcp__acm__wait`, do not read files, and do not use any other tools. If the `glm5.1` primary reviewer fails and fallback is used, emit one brief progress note to the user before continuing; this progress note is allowed and is not an extra tool.
 
 ## Input
 
@@ -13,11 +13,15 @@ Use this YAML shape:
 
 ```yaml
 reviewers:
-  codex-ultra:
+  codex:
+    model: codex-ultra
     session: sess_xxx
-  gemini-ultra:
-    session: sess_yyy
-  claude-ultra:
+  glm5.1:
+    primary_model: oc-ollama-cloud/glm-5.1
+    fallback_model: gemini-ultra
+    session: sess_glm_or_gemini
+  claude:
+    model: claude-ultra
     session: sess_zzz
 
 review_prompt: |
@@ -26,9 +30,16 @@ review_prompt: |
 
 Apply these input rules:
 
-- Treat reviewer models as fixed: `codex-ultra`, `gemini-ultra`, `claude-ultra`.
-- Treat every `session` as optional. If a session is present, pass it into the initial `mcp__acm__run` call for that agent. If it is absent, start a new session.
-- Preserve the latest known session for every agent and use that latest session for contradiction-resolution reruns and final output.
+- Treat reviewer slots as fixed: `codex`, `glm5.1`, and `claude`.
+- Treat `codex.model` as fixed to `codex-ultra`.
+- Treat `glm5.1.primary_model` as fixed to `oc-ollama-cloud/glm-5.1` and `glm5.1.fallback_model` as fixed to `gemini-ultra`.
+- Treat `claude.model` as fixed to `claude-ultra`.
+- Treat every reviewer `session` as optional. If a session is present, pass it into the initial `mcp__acm__run` call for that reviewer slot. If it is absent, start a new session.
+- For `glm5.1`, prefer `oc-ollama-cloud/glm-5.1` for the reviewer slot. If any `glm5.1` primary launch fails, its wait fails, or the agent finishes with status `failed`, emit a brief progress note to the user that the primary `glm5.1` reviewer failed and the workflow is continuing with `gemini-ultra`; then launch `gemini-ultra` for the same reviewer slot.
+- After `glm5.1` falls back to `gemini-ultra` within a workflow, use `gemini-ultra` for later reruns of that reviewer slot, including contradiction resolution.
+- If `gemini-ultra` also fails for the `glm5.1` slot, stop immediately and return `status: failed`.
+- Track each reviewer by slot id, not by model name. Preserve `model_used`, whether fallback was used, and the latest known session for every reviewer slot.
+- Preserve the latest known session for every reviewer slot and use that latest session for contradiction-resolution reruns and final output.
 - Treat `review_prompt` as the shared prompt for the initial three review agents.
 
 ## Reviewer Output Contract
@@ -61,17 +72,21 @@ Apply these reviewer output rules:
    - Use only `mcp__acm__run` and `mcp__acm__wait`.
    - Use `timeout: 900` for every `mcp__acm__wait` call.
    - If any required `mcp__acm__run` or `mcp__acm__wait` call is unavailable or fails, including a 900-second wait timeout, stop immediately and return YAML with top-level `status: failed` and a concrete `reason`.
+   - Exception: when the failure is from a `glm5.1` primary reviewer run using `oc-ollama-cloud/glm-5.1`, emit the fallback progress note and continue that reviewer slot with `gemini-ultra` instead of stopping immediately.
 
 2. Launch initial reviews
-   - Start three review agents in parallel with `codex-ultra`, `gemini-ultra`, and `claude-ultra`.
+   - Start three review slots in parallel: `codex` with `codex-ultra`, `glm5.1` first with `oc-ollama-cloud/glm-5.1`, and `claude` with `claude-ultra`.
    - Pass the same `review_prompt` to all three agents, wrapped with the reviewer output contract above.
    - Pass each reviewer's provided session when present.
+   - If the `glm5.1` primary launch fails, emit the fallback progress note and rerun only that reviewer slot with `gemini-ultra`.
 
 3. Wait for initial reviews
    - Wait until all three review agents finish with `mcp__acm__wait` and `timeout: 900`.
-   - Record each agent's latest `session_id` and agent status from the result.
-   - If waiting fails, stop immediately and return `status: failed`.
-   - If any initial review agent finishes with agent status `failed`, stop immediately and return top-level `status: failed`.
+   - Record each reviewer slot's latest `session_id`, `model_used`, fallback state, and agent status from the result.
+   - If waiting fails for the `glm5.1` primary reviewer, emit the fallback progress note and rerun only that reviewer slot with `gemini-ultra`.
+   - If waiting fails for any other reviewer, stop immediately and return `status: failed`.
+   - If the `glm5.1` primary reviewer finishes with agent status `failed`, emit the fallback progress note and rerun only that reviewer slot with `gemini-ultra`.
+   - If any other initial review agent finishes with agent status `failed`, stop immediately and return top-level `status: failed`.
 
 4. Merge findings
    - Extract reviewer findings from the three structured YAML review results.
@@ -85,6 +100,8 @@ Apply these reviewer output rules:
    - If no contradictions remain, continue to the next step.
    - If contradictions remain, start a contradiction-resolution round for only the conflicting items.
    - Resume each reviewer session and provide the conflicting opinions from the other reviewers.
+   - For each reviewer slot, resume the latest successful `model_used` and session; if `glm5.1` previously fell back, continue contradiction resolution with `gemini-ultra`.
+   - If a `glm5.1` primary contradiction-resolution run fails before fallback has been used, emit the fallback progress note and rerun only that reviewer slot with `gemini-ultra`.
    - Ask each reviewer to reconsider the conflicting items and return YAML only for those items using the same reviewer output contract.
    - Wait for each contradiction-resolution round with `mcp__acm__wait` and `timeout: 900`.
    - If any contradiction-resolution run or wait fails, stop immediately and return `status: failed`.
@@ -117,23 +134,32 @@ findings:
     target: section 2 paragraph 3
     reason: Requirement A is missing
     fix: Add the missing requirement A condition
-    agreed_by: [codex-ultra, gemini-ultra, claude-ultra]
+    agreed_by: [codex, glm5.1, claude]
   - key: naming-convention
     position: needs_fix
     severity: minor
     target: src/utils.ts line 42
     reason: Variable name does not follow project convention
     fix: Rename fooBar to foo_bar
-    agreed_by: [codex-ultra, gemini-ultra]
+    agreed_by: [codex, glm5.1]
 
 reviewers:
-  codex-ultra:
+  codex:
+    model_used: codex-ultra
+    fallback_used: false
     session: sess_xxx_final
     status: completed
-  gemini-ultra:
-    session: sess_yyy_final
+  glm5.1:
+    primary_model: oc-ollama-cloud/glm-5.1
+    fallback_model: gemini-ultra
+    model_used: oc-ollama-cloud/glm-5.1
+    fallback_used: false
+    fallback_reason: null
+    session: sess_glm_or_gemini_final
     status: completed
-  claude-ultra:
+  claude:
+    model_used: claude-ultra
+    fallback_used: false
     session: sess_zzz_final
     status: completed
 ```
@@ -145,7 +171,9 @@ Apply these output rules:
 - Always include `accepted_findings_count`, `contradiction_rounds`, and `unresolved_items_count`.
 - Always return all three reviewer entries.
 - Always include the `findings` list with all accepted findings and their details.
-- Each finding must include `agreed_by` listing which reviewers agreed on that position.
+- Each finding must include `agreed_by` listing which reviewer slot ids agreed on that position.
+- For every reviewer slot, include `model_used` and `fallback_used`.
+- For `glm5.1`, also include `primary_model`, `fallback_model`, and `fallback_reason`; set `fallback_reason: null` when no fallback was used.
 - When no findings exist, return `findings: []` with `accepted_findings_count: 0`.
 - When processing fails before an agent launches, preserve the provided input session if one exists and mark that agent `status: skipped`.
 - When processing fails after an agent launches or waits unsuccessfully, return the latest known session and mark that agent `status: failed`.

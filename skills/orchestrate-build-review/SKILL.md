@@ -69,6 +69,7 @@ Apply these input rules:
 - Treat `verification_prompt` as required. Every reviewer must use it to validate the builder result, including concrete checks or commands when appropriate.
 - Treat `done_criteria` as required.
 - Treat `max_loop_rounds` as required.
+- Treat `max_loop_rounds` as the current total-round limit. Change it only when the user chooses to extend the workflow at the loop-limit decision in step 9.
 - Treat `artifacts_dir` as optional. If omitted, default to `.codex-artifacts/orchestrate-build-review`.
 - Preserve the latest known `session_id` for every agent and use that latest `session_id` for contradiction-resolution reruns, later rounds, and final output.
 
@@ -149,7 +150,21 @@ Apply this policy to every round review file and every contradiction-reconsidera
 
 ## Wait and Stall Detection Policy
 
-Apply this policy to every builder and reviewer wait:
+Resolve the operator's wait mode once before round 1 from local process evidence:
+
+- Inspect the command-execution shell and its parent with `ps -o pid,ppid,comm -p $$ -p $PPID`. If an intermediate shell or wrapper is present, follow its parent PID until the nearest `codexg` or `codex` executable is identified. Reuse confirmed process evidence from the current operator session when available.
+- If that executable's basename is `codexg`, select background waiting. If it is `codex`, or the executable cannot be identified, use standard waiting. Do not infer the operator's executable from installed commands, the selected model, or a child agent's process name.
+- Apply the selected mode to every builder and reviewer wait, including fallback, artifact repair, contradiction resolution, and later loop rounds.
+
+For `codexg`, use background waiting:
+
+- Call `mcp__acm__wait` with the unfinished agent PIDs and `timeout: 0`. This means an unlimited wait, not an immediate status check.
+- Run that pending tool call through the runtime's background execution mechanism, preserve its continuation handle and workflow state, and yield into idle until its completion notification arrives. While the wait is pending, do not poll with `get_result`, `peek`, repeated `wait` calls, or sleep loops, and do not launch dependent workflow stages.
+- On notification, collect the pending wait result, update agent statuses and session ids, and continue from the waiting stage. Preserve PID-to-slot mappings, round numbers, artifact paths, and fallback/repair state across idle and resumption.
+- Do not apply the standard 900-second timeout checkpoints or count the immediate background handoff as a stale check. Any subsequent wait in this mode also uses `timeout: 0` and background idle.
+- If the pending wait itself errors, use `get_result` and, for still-running PIDs, `peek` to diagnose it under the common recovery rules below. A background handoff or an idle period alone is not an error or evidence of a stall.
+
+For standard waiting, use the existing timeout and stall checks:
 
 - Start with `mcp__acm__wait` using `timeout: 900`.
 - When a wait times out, call `mcp__acm__get_result` for every unfinished PID and store a compact progress fingerprint from its status and current output. Compare it with that PID's fingerprint from the previous timeout checkpoint when one exists.
@@ -158,6 +173,9 @@ Apply this policy to every builder and reviewer wait:
 - If progress is observed, reset that PID's consecutive stale-check count to zero and call `mcp__acm__wait` again with `timeout: 900` for unfinished PIDs. Do not stop merely because a cumulative wall-clock budget has elapsed while progress continues.
 - If no progress is observed, increment that PID's consecutive stale-check count and re-wait once more with `timeout: 900` while the count is below two.
 - Treat a PID as stalled when two consecutive timeout checks observe no progress. A stale check is consecutive only when no intervening `peek` event or meaningful `get_result` change was observed.
+
+Apply these result and recovery rules in both modes:
+
 - If `get_result` or `peek` fails or reports an unknown PID, retry the failed diagnostic call once. If it fails again, treat that PID as a wait-recovery failure.
 - If `get_result` reports a terminal result during diagnosis, handle it immediately instead of re-waiting.
 - Before handling a still-running PID as stalled or as an unrecoverable wait-recovery failure, terminate it with `mcp__acm__kill_process`. Confirm termination from a successful kill result or a subsequent terminal `get_result`; if termination cannot be confirmed, stop the workflow with `status: failed` so an orphaned agent cannot write stale artifacts later.
@@ -170,7 +188,7 @@ Apply this policy to every builder and reviewer wait:
 1. Initialize loop state
    - Use only `mcp__acm__run` for agent launches, `mcp__acm__wait` for normal waiting, `mcp__acm__get_result` plus `mcp__acm__peek` for timeout diagnosis, and `mcp__acm__kill_process` for confirmed stalled processes.
    - Use the current working directory as `workFolder` for every `mcp__acm__run` call.
-   - Use `timeout: 900` for every initial `mcp__acm__wait` call and apply the wait and stall detection policy above when needed.
+   - Resolve the operator's wait mode using the policy above: `codexg` uses `mcp__acm__wait` with `timeout: 0` and background idle; standard waiting uses `timeout: 900` and progress-aware timeout diagnosis.
    - Validate that all required input fields are present and non-empty: `builder.task_prompt`, `review_prompt`, `verification_prompt`, `done_criteria`, and `max_loop_rounds`.
    - Resolve the builder model from `builder.model`, defaulting to `codex-ultra` when it is absent or empty.
    - Resolve the Claude reviewer model from `claude.model`, defaulting to `claude-ultra` when it is absent or empty; reject any value other than `claude-ultra` or `fable`.
@@ -262,7 +280,13 @@ Apply this policy to every builder and reviewer wait:
    - If no accepted `needs_fix` findings remain after merge and contradiction resolution, stop and return `status: completed` with reason `done criteria satisfied and no fixes required`.
 
 9. Decide whether to continue looping
-   - If round `N` equals `max_loop_rounds` and accepted `needs_fix` findings remain, stop and return `status: stopped` with a reason that the loop limit was reached before satisfying `done_criteria`.
+   - If round `N` reaches `max_loop_rounds` and accepted `needs_fix` findings remain, pause with `status: ask` and request the user's decision before launching another builder round.
+   - Explain that the configured loop limit requires this decision, and include the completed round count, a concise summary of the remaining accepted `needs_fix` findings, and the path to `<artifacts_dir>/round-N/merged-findings.yaml`.
+   - Offer three choices: continue for one additional round, continue with a user-specified higher total-round limit, or stop here. Use an available user-question tool; if none is available, return the `ask` YAML with `decision_request` as defined below.
+   - While awaiting an answer, preserve the workflow state and launch no further agents. No answer or an unclear answer keeps the workflow in `ask`; clarify an unclear decision without assuming continuation or stopping.
+   - If the user chooses one additional round, set `max_loop_rounds` to `N + 1`. If the user specifies a higher total-round limit, require an integer greater than `N` and update `max_loop_rounds` to that value. A request to continue without a count authorizes one additional round.
+   - After the user chooses to continue, proceed to step 10 with the existing artifacts, latest session ids, resolved models, and active/degraded reviewer state. Preserve cumulative round numbering and ask again if the updated limit is reached with accepted `needs_fix` findings remaining.
+   - If the user chooses to stop, return `status: stopped` with a reason that the user chose to stop after reaching the loop limit; preserve the remaining findings in the output.
 
 10. Run builder for round N+1
    - Create `<artifacts_dir>/round-(N+1)/builder`, `<artifacts_dir>/round-(N+1)/reviews`, and `<artifacts_dir>/round-(N+1)/reviews/reconsider`.
@@ -282,7 +306,7 @@ Apply this policy to every builder and reviewer wait:
 
 ## Output
 
-Return YAML only. Use this shape:
+Return status reports as YAML only. Background idle keeps the workflow in progress and does not produce a final status report or change its outcome to `ask`, `stopped`, or `completed`. The loop-limit decision in step 9 may use an interactive user-question tool. Use this shape:
 
 ```yaml
 status: completed
@@ -323,9 +347,22 @@ builder:
   status: completed
 ```
 
+For `status: ask`, include the normal state fields above and add `decision_request` in this shape, using the actual current limit, artifact path, and remaining findings in the question:
+
+```yaml
+decision_request:
+  current_max_loop_rounds: 3
+  merged_findings_path: .codex-artifacts/orchestrate-build-review/round-3/merged-findings.yaml
+  question: "Round 3 reached the configured limit of 3. Requirement A is still missing. How should the workflow proceed?"
+  options:
+    - Continue for one additional round
+    - Continue with a higher total-round limit (specify the new limit)
+    - Stop here
+```
+
 Apply these output rules:
 
-- Use top-level `status` values: `completed`, `stopped`, `failed`.
+- Use top-level `status` values: `completed`, `ask`, `stopped`, `failed`. `ask` means the workflow is paused awaiting the user's loop-limit decision.
 - Use agent-level `status` values: `completed`, `skipped`, `failed`.
 - Always include `accepted_findings_count`, `contradiction_rounds`, `unresolved_items_count`, and `loop_rounds`.
 - Always include `active_reviewers_count` and `degraded_reviewer_ids` based on the final reviewer set.
@@ -338,9 +375,10 @@ Apply these output rules:
 - For `glm5.3`, also include `primary_model`, `fallback_model`, and `fallback_reason`; set `fallback_reason: null` when no fallback was used. When invalid YAML caused fallback, include the post-repair validator diagnostics in `fallback_reason`.
 - When processing fails before an agent launches, preserve the provided input `session_id` if one exists and mark that agent `status: skipped`.
 - When an attempted reviewer launch fails or a reviewer is degraded after launch, preserve its provided or latest known `session_id` when available and mark that reviewer `status: failed`.
-- A top-level `status: completed` or `status: stopped` may include one reviewer with `status: failed` when two reviewer slots remained active and the workflow otherwise reached that outcome.
+- A top-level `status: completed`, `status: ask`, or `status: stopped` may include one reviewer with `status: failed` when two reviewer slots remained active and the workflow otherwise reached that outcome.
 - When processing fails after an agent launches or after stall detection, return the latest known `session_id` and mark that agent `status: failed`.
 - When no `session_id` was ever observed for a failed newly started agent, set `session_id: null`.
 - When processing stops because no accepted `needs_fix` findings remain and `done_criteria` is satisfied, set top-level `status: completed`; if degraded, mention the two-reviewer completion in `reason`.
 - When processing stops because reviewer opinions do not converge, set top-level `status: stopped` and explain the contradiction outcome in `reason`.
-- When processing stops because the loop limit is reached, set top-level `status: stopped` and explain that `max_loop_rounds` was exhausted before satisfying `done_criteria`.
+- When the loop limit is reached with accepted `needs_fix` findings remaining, set top-level `status: ask`, explain that the workflow awaits the user's decision, and include `decision_request`. Preserve each agent's latest status and session id while waiting.
+- When the user chooses to stop at the loop-limit decision, set top-level `status: stopped` and state that this was the user's decision. Omit `decision_request` once no decision is pending.
